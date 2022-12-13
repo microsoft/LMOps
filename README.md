@@ -11,8 +11,8 @@ We are hiring at all levels (including FTE researchers and interns)! If you are 
 
 ## Links
 
-- [UniLM](https://github.com/microsoft/unilm): Large-scale Self-supervised Pre-training Across Tasks, Languages, and Modalities
-- [TorchScale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
+- [microsoft/unilm](https://github.com/microsoft/unilm): Large-scale Self-supervised Pre-training Across Tasks, Languages, and Modalities
+- [microsoft/torchscale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
 
 ## License
 This project is licensed under the license found in the LICENSE file in the root directory of this source tree.
