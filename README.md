@@ -6,7 +6,8 @@ We are hiring at all levels (including FTE researchers and interns)! If you are 
 
 
 ## News
-- Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.00616)
+- Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](#)
+- Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](#)
 - Nov, 2022: [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
 
 ## Links
