@@ -18,12 +18,10 @@ We are hiring at all levels (including FTE researchers and interns)! If you are 
 
 ## License
 This project is licensed under the license found in the LICENSE file in the root directory of this source tree.
-Portions of the source code are based on the [transformers](https://github.com/huggingface/transformers) project.
 
 [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct)
 
 ### Contact Information
 
 For help or issues using the pre-trained models, please submit a GitHub issue.
-
 For other communications, please contact [Furu Wei](http://gitnlp.org/) (`fuwei@microsoft.com`).
