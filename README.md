@@ -8,7 +8,7 @@ We are hiring at all levels (including FTE researchers and interns)! If you are 
 ## News
 - Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](#) (incoming)
 - Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](#) (incoming)
-- Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](#)
+- Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.06713)
 - Nov, 2022: [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
 
 ## Links
