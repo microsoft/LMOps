@@ -14,6 +14,10 @@ Advanced technologies facilitating prompting language models.
 
 [Paper] [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
 
+> - Extensible interface allowing prompting LLMs beyond natural language for fine-grain specifications
+
+> - Context-guided imaginary word learning for general usability
+
 ![Extensible Prompts for Language Models](https://user-images.githubusercontent.com/1070872/207856788-5409d04d-c406-4b29-ae7b-2732e727d4cc.png)
 
 
