@@ -42,4 +42,11 @@ sh scripts/manyshot_baseline.sh ${seed} ${task} ${model_path} ${model_arch} ${k}
 The arguments are used in the same way as above. For vanilla in-context learning, `k` is limited by the context window size (2048).
 
 ## Citation
-Coming soon.
+
+```
+@inproceedings{structprompt,
+  title={Structured Prompting: Scaling In-Context Learning to 1,000 Examples},
+  author={Yaru Hao and Yutao Sun and Li Dong and Zhixiong Han and Yuxian Gu and Furu Wei},
+  year={2022}
+}
+```
