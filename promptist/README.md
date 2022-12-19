@@ -16,7 +16,7 @@
 
 You can try the online demo at [https://huggingface.co/spaces/microsoft/Promptist](https://huggingface.co/spaces/microsoft/Promptist).
 
-`[Note]` the online demo at HuggingFace Space is using CPU, so slow generation speed would be expected. Please load the model locally with GPUs for faster generation.
+`[Note]` The online demo at HuggingFace Space is using CPU, so slow generation speed would be expected. Please load the model locally with GPUs for faster generation.
 
 ```python
 import gradio as grad
