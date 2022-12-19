@@ -1,4 +1,4 @@
-# LMOps: Language Model Operations
+# LMOps: Enabling AI w/ LLMs
 
 ## News
 - Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](#) (coming soon)
