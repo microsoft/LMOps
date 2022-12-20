@@ -1,4 +1,4 @@
-# Structured Prompting: Scaling In-Context Learning to 1,000 Examples
+# Structured Prompting
 
 ## Environment
 torch==1.13
