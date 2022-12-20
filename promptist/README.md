@@ -1,7 +1,7 @@
 # Promptist: reinforcement learning for automatic prompt optimization
 
 ## News
-- [Demo Release] Dec, 2022: [Demo at HuggingFace Space](https://aka.ms/promptist-demo)
+- [Demo Release] Dec, 2022: [Demo at Hugging Face Space](https://aka.ms/promptist-demo)
 - [Model Release] Dec, 2022: [link](#load-pretrained-model-for-stable-diffusion-v14)
 - [Paper Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist-paper)
 
@@ -16,7 +16,7 @@
 
 You can try the online demo at [https://huggingface.co/spaces/microsoft/Promptist](https://huggingface.co/spaces/microsoft/Promptist).
 
-`[Note]` The online demo at HuggingFace Space is using CPU, so slow generation speed would be expected. Please load the model locally with GPUs for faster generation.
+`[Note]` The online demo at Hugging Face Space is using CPU, so slow generation speed would be expected. Please load the model locally with GPUs for faster generation.
 
 ```python
 import gradio as grad
