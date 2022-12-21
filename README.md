@@ -1,7 +1,7 @@
 # LMOps: Enabling AI w/ LLMs
 
 ## News
-- Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](#) (coming soon)
+- [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
 - [Paper&Model&Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
 - [Paper&Code Release] Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.06713)
 - [Paper Release] Nov, 2022: [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
@@ -43,6 +43,22 @@ Advanced technologies facilitating prompting language models.
 > 2) Scale in-context learning to many demonstration examples.
 
 ![image](https://user-images.githubusercontent.com/1070872/207856629-2bb0c933-c27b-4177-9e10-e397622ae79b.png)
+
+
+## Fundamental Understanding of LLMs
+
+### Understand In-Context Learning
+
+[Paper] [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
+
+> - According to the demonstration examples, GPT produces meta gradients for In-Context Learning (ICL) through forward computation. ICL works by applying these meta gradients to the model through attention.
+
+> - The meta optimization process of ICL shares a dual view with finetuning that explicitly updates the model parameters with back-propagated gradients.
+
+> - We can translate optimization algorithms (such as SGD with Momentum) to their corresponding Transformer architectures.
+
+![image](https://user-images.githubusercontent.com/1070872/208835096-54407f5f-d136-4747-9629-3219988df5d4.png)
+
 
 ## Links
 
