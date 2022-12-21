@@ -4,11 +4,12 @@ This repository contains the implementation of structured prompting.
 ## Installation
 We recommend you to run the code using the docker under Linux:
 ```bash
-docker run -it --rm--runtime=nvidia --ipc=host --privileged pytorch/pytorch:1.7.1-cuda11.0-cudnn8-devel bash
+docker run -it --rm --runtime=nvidia --ipc=host --privileged pytorch/pytorch:1.7.1-cuda11.0-cudnn8-devel bash
 ```
 Then install the following packages with pip:
 ```bash
-pip install --user datasets=2.4.0
+pip install --user datasets==2.4.0
+pip install --user numpy==1.22
 pip install --user tensorboard scikit-learn
 pip install --user -e fairseq/
 ```
