@@ -1,4 +1,4 @@
-# LMOps: Enabling AI w/ LLMs
+<!--# LMOps: Enabling AI w/ LLMs-->
 
 ## News
 - [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
@@ -47,7 +47,7 @@ Advanced technologies facilitating prompting language models.
 
 ## Fundamental Understanding of LLMs
 
-### Understand In-Context Learning
+### Understanding In-Context Learning
 
 [Paper] [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
 
