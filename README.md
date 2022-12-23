@@ -10,17 +10,6 @@
 
 Advanced technologies facilitating prompting language models.
 
-### X-Prompt: extensible prompts beyond NL for descriptive instructions
-
-[Paper] [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
-
-> - Extensible interface allowing prompting LLMs beyond natural language for fine-grain specifications
-
-> - Context-guided imaginary word learning for general usability
-
-![Extensible Prompts for Language Models](https://user-images.githubusercontent.com/1070872/207856788-5409d04d-c406-4b29-ae7b-2732e727d4cc.png)
-
-
 ### Promptist: reinforcement learning for automatic prompt optimization
 
 [Paper] [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist-paper)
@@ -43,6 +32,17 @@ Advanced technologies facilitating prompting language models.
 > 2) Scale in-context learning to many demonstration examples.
 
 ![image](https://user-images.githubusercontent.com/1070872/207856629-2bb0c933-c27b-4177-9e10-e397622ae79b.png)
+
+
+### X-Prompt: extensible prompts beyond NL for descriptive instructions
+
+[Paper] [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
+
+> - Extensible interface allowing prompting LLMs beyond natural language for fine-grain specifications
+
+> - Context-guided imaginary word learning for general usability
+
+![Extensible Prompts for Language Models](https://user-images.githubusercontent.com/1070872/207856788-5409d04d-c406-4b29-ae7b-2732e727d4cc.png)
 
 
 ## Fundamental Understanding of LLMs
