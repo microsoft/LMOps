@@ -1,5 +1,13 @@
 <!--# LMOps: Enabling AI w/ LLMs-->
 
+# LMOps
+LMOps is a research initiative on fundamental research and technology for building AI products w/ foundation models, especially the general technology for enabling AI capabilities w/ LLMs and Generative AI models.
+
+- Better Prompts: [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616)
+- Longer Context: [Structured prompting](https://arxiv.org/abs/2212.06713), [Length-Extrapolatable Transformers](https://arxiv.org/abs/2212.10554)
+- Knowledge Augmentation (TBA)
+- Fundamentals
+
 ## News
 - [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
 - [Paper&Model&Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
@@ -12,7 +20,7 @@ Advanced technologies facilitating prompting language models.
 
 ### Promptist: reinforcement learning for automatic prompt optimization
 
-[Paper] [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist-paper)
+[Paper] [Optimizing Prompts for Text-to-Image Generation](https://arxiv.org/abs/2212.09611)
 
 > - Language models serve as a prompt interface that optimizes user input into model-preferred prompts.
 
