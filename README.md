@@ -8,6 +8,11 @@ LMOps is a research initiative on fundamental research and technology for buildi
 - Knowledge Augmentation (TBA)
 - Fundamentals
 
+## Links
+
+- [microsoft/unilm](https://github.com/microsoft/unilm): Large-scale Self-supervised Pre-training Across Tasks, Languages, and Modalities
+- [microsoft/torchscale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
+
 ## News
 - [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
 - [Paper&Model&Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
@@ -66,12 +71,6 @@ Advanced technologies facilitating prompting language models.
 > - We can translate optimization algorithms (such as SGD with Momentum) to their corresponding Transformer architectures.
 
 ![image](https://user-images.githubusercontent.com/1070872/208835096-54407f5f-d136-4747-9629-3219988df5d4.png)
-
-
-## Links
-
-- [microsoft/unilm](https://github.com/microsoft/unilm): Large-scale Self-supervised Pre-training Across Tasks, Languages, and Modalities
-- [microsoft/torchscale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
 
 ## Hiring: [aka.ms/nlpagi](https://aka.ms/nlpagi)
 We are hiring at all levels (including FTE researchers and interns)! If you are interested in working with us on Foundation Models (aka large-scale pre-trained models) and AGI, NLP, MT, Speech, Document AI and Multimodal AI, please send your resume to <a href="mailto:fuwei@microsoft.com" class="x-hidden-focus">fuwei@microsoft.com</a>.
