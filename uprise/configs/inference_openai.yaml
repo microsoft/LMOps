@@ -1,0 +1,10 @@
+engine: "ada"
+output_file: ??? 
+res_file: ??? 
+batch_size: 1
+prompt_file: ???
+max_length: 2048 
+generate_max_len: 100 
+n_tokens: 1024 
+task_name: ???
+cache_dir: 

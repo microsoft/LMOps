@@ -1,0 +1,45 @@
+# non-empty results
+boolean -> !"does there exist an " constraint_event_ empty , " (> (size (:results (FindEventWrapperWithDefaults :constraint" constraint_event_ "))) #(Number 0))" empty
+
+# singleton List[Path]
+list_path_ -> path , " (append #(List[Path] [])" path ")"
+list_path_ -> path , " (append (List.Nil)" path ")"
+
+# singleton List[Recipient]
+list_recipient_ -> recipient , " (append #(List[Recipient] [])" recipient ")"
+list_recipient_ -> recipient , " (append (List.Nil)" recipient ")"
+
+unit -> !"Yes, do the " number !" one" , " (Yield :output (Execute :intension (ChooseCreateEvent :index" number " :intension (refer (ActionIntensionConstraint)))))"
+
+constraint_list_attendee__ -> !" with attendees" , " (negate (AlwaysFalseConstraint[List[Attendee]]))"
+
+constraint_event__constraint_event__args -> !" with location unspecified" constraint_event__constraint_event__args , " :location (AlwaysFalseConstraint[LocationKeyphrase])"  constraint_event__constraint_event__args
+
+# TODO: ambiguous with `(getIntraSalient (AlwaysTrueConstraint))`, does that matter?
+dynamic -> !"that thing" , "(:item (getIntraSalient (AlwaysTrueConstraint[Dynamic])))"
+
+# comparisons that aren't "before"/"after"
+constraint_duration_ -> !" longer than " duration , " (?>" duration ")"
+constraint_duration_ -> !" no shorter than " duration , " (?>=" duration ")"
+constraint_duration_ -> !" shorter than " duration , " (?<" duration ")"
+constraint_duration_ -> !" no longer than " duration , " (?<=" duration ")"
+
+# update event without restating type
+constraint_event_wo_type -> constraint_event__constraint_event__args , " (Constraint[Event]" constraint_event__constraint_event__args ")"
+updateeventresponse -> !"update " event !" so it is" constraint_event_wo_type , " (UpdateWrapper" " :findArg" event  " :updateArg" constraint_event_wo_type ")"
+updatecommitevent -> !"update " eventid !" so it is" constraint_event_wo_type , " (UpdatePreflightEventWrapper" " :id" eventid  " :update" constraint_event_wo_type ")"
+
+# clobber event without restating type
+dynamic -> !"Change my request so the " constraint_calflowintension_constraint_event___ !" is" constraint_event_wo_type  , " (ClobberWrapper" " :oldLocation" constraint_calflowintension_constraint_event___  " :new" constraint_event_wo_type ")"
+
+# update duration
+duration -> duration !" longer" , " (addDurations (:duration (getIntraSalient (AlwaysTrueConstraint[Event])))" duration ")"
+
+# bare date constraint
+constraint_date_ -> !"date" , " (Constraint[Date])"
+
+# nonEmptyBase
+non_empty_base_ -> constraint_event_ , " :nonEmptyBase" constraint_event_
+constraint_event__constraint_event__args_a -> constraint_event__constraint_event__args , constraint_event__constraint_event__args
+constraint_event__constraint_event__args_b -> constraint_event__constraint_event__args , constraint_event__constraint_event__args
+constraint_event_ -> non_empty_base_ !" but" constraint_event__constraint_event__args_a constraint_event__constraint_event__args_b , " (Constraint[Event]" constraint_event__constraint_event__args_a non_empty_base_ constraint_event__constraint_event__args_b ")"

@@ -1,0 +1,37 @@
+# @package _group_
+
+# batch_size: 40
+batch_size: 16
+dev_batch_size: ${.batch_size}
+adam_eps: 1e-8
+adam_betas: (0.9, 0.999)
+max_grad_norm: 2.0
+log_batch_step: 50 #每隔多少个step打印loss和lr
+train_rolling_loss_step: 100
+weight_decay: 0.0
+# learning_rate: 2e-5
+# learning_rate: 0.000213
+# learning_rate: 0.00013416407864998739 
+learning_rate: 1e-5
+# learning_rate: 0.0001065
+
+# encoder:
+#   dropout: 0.15
+
+# Linear warmup over warmup_steps.
+#warmup_steps: 1237
+warmup_steps: 1000
+
+# Number of updates steps to accumulate before performing a backward/update pass.
+gradient_accumulation_steps: 1
+
+# Total number of training epochs to perform.
+num_train_epochs: 30
+eval_per_epoch: 1e-12 
+hard_negatives: 20 # 
+other_negatives: 20 #
+val_av_rank_hard_neg: ${.hard_negatives}
+val_av_rank_other_neg: ${.other_negatives}
+val_av_rank_bsz: 128
+val_av_rank_max_qs: 10000
+num_save_epochs: 1 
