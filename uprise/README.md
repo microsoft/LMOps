@@ -41,9 +41,9 @@ UPRISE supports any task, and we have defined all the tasks used in our paper in
 
 We divide all the tasks into two question types: multiple choice and text completion, and use different methods to implement them.
 
-**Multiple Choice** is the question to choose one correct completion from several options. You can follow [SNLI](https://github.com/cdxeve/UPRISE/blob/628e8fd09f50d66e8407302a33115a6fdf8c5382/DPR/dpr/utils/tasks.py#L252-L316) to implement your multiple choice task.
+**Multiple Choice** is the question to choose one correct completion from several options. You can follow [SNLI](./DPR/dpr/utils/tasks.py#L252-L316) to implement your multiple choice task.
 
-**Text Completion** is the question to do free-form completion. You can follow [SQuADv1](https://github.com/cdxeve/UPRISE/blob/628e8fd09f50d66e8407302a33115a6fdf8c5382/DPR/dpr/utils/tasks.py#L472-L523) to implement your text completion task.
+**Text Completion** is the question to do free-form completion. You can follow [SQuADv1](./DPR/dpr/utils/tasks.py#L472-L523) to implement your text completion task.
 
 ### 4. [OPTIONAL] Define Your Evaluation Metric
 There are several metrics already defined in [metric.py](./src/utils/metric.py). However, if you want to add a new metric, you can follow the steps below:
@@ -64,7 +64,7 @@ def squad(labels, preds):
     return em,f1
 ```
 
-2. Add your metric function to the `compute_metrics` function. For instance, you can add the following code to the [compute_metrics](https://github.com/cdxeve/UPRISE/blob/628e8fd09f50d66e8407302a33115a6fdf8c5382/src/utils/metric.py#L62-L80) function:
+2. Add your metric function to the `compute_metrics` function. For instance, you can add the following code to the [compute_metrics](./src/utils/metric.py#L62-L80) function:
 ```python
 if metric=='squad': # the metric name should be the same with the set metric in your task class in task.py
     em,f1=squad(labels=labels, preds=preds)
