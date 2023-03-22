@@ -1,0 +1,13 @@
+# Quoted strings *do* begin with a space in this grammar.
+# For example, `create event with " Rose"`.
+# The space has to be a regex, b/c it gets consumed by CopyTokens,
+# and it has to not be inside nonquoteplus, because it doesn't
+# appear on the plan side.
+quoted -> !"\"" !/ / nonquoteplus !"\"", "\"" nonquoteplus "\""
+
+# matches one or more characters that are not double quotes
+nonquoteplus -> !/[^"]/ nonquotestar, /[^"]/ nonquotestar
+
+# matches zero or more characters that are not double quotes
+nonquotestar -> !/[^"]/ nonquotestar, /[^"]/ nonquotestar
+nonquotestar -> empty, empty

@@ -1,0 +1,21 @@
+  
+description: Run the evaluator for the Break dataset.
+tasks:
+  - spec:
+      blueprint: $BREAK_EVALUATOR
+      resultPath: /results
+      args:
+        - PYTHONPATH="." 
+        - python3.7 
+        - scripts/evaluate_predictions.py 
+        - --dataset_file=data/labels.csv
+        - --preds_file=data/predictions.csv 
+        - --no_cache 
+        - --output_file_base=/results/results
+        - --metrics 
+        - ged_scores exact_match sari normalized_exact_match
+      datasetMounts:
+        - datasetId: $BREAK_PREDICTIONS
+          containerPath: /data/predictions
+        - datasetId: $BREAK_LABELS
+          containerPath: /data/labels.csv

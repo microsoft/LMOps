@@ -1,0 +1,33 @@
+train_file: ???
+valid_file: ???
+top_k: ???
+hard_neg: ???
+prompt_pool_path: ???
+prompt_setup_type: ???
+task_setup_type: ???
+test_cluster: 
+
+# @package _group_
+epr_dataset:
+  _target_: dpr.data.biencoder_data.EPRDataset
+  file: ${..train_file}
+  top_k: ${..top_k}
+  hard_neg: ${..hard_neg}
+  prompt_pool_path: ${..prompt_pool_path}
+  prompt_setup_type: ${..prompt_setup_type}
+  task_setup_type: ${..task_setup_type}
+  test_cluster: ${..test_cluster}
+  split: train
+
+#for validation
+epr_valid_dataset:
+  _target_: dpr.data.biencoder_data.EPRDataset
+  file: ${..valid_file} 
+  top_k: ${..top_k}
+  hard_neg: ${..hard_neg}
+  prompt_pool_path: ${..prompt_pool_path}
+  prompt_setup_type: ${..prompt_setup_type}
+  task_setup_type: ${..task_setup_type}
+  test_cluster: ${..test_cluster}
+  split: valid
+

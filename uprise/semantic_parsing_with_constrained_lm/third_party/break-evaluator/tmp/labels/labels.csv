@@ -1,0 +1,100 @@
+question_id,question_text,decomposition,split
+CLEVR_dev_6638,Ae the more cylinders or cubes?,"return cylinders ;return cubes ;return the  number of  #1 ;return the  number of  #2 ;return which  is  highest of #3 ,  #4",dev
+CLEVR_dev_1783,All of the objects have something in common; what is it?,return the  objects ;return what #1 have in common,dev
+CLEVR_dev_6917,All the large spheres are what color?,return large spheres ;return color of #1,dev
+CLEVR_dev_4787,All the matte cubes are what color?,return matte cubes ;return color of #1,dev
+CLEVR_dev_4991,Alre these object all different colors?,return objects ;return colors of #1 ;return number of  #2 ;return if  #3 is  more than  one,dev
+CLEVR_dev_405,Are all cylinders in this image the same color?,return cylinders ;return colors of #1 ;return are all #2 the  same,dev
+CLEVR_dev_5131,Are all cylinders made of the same material?,return cylinders ;return the  materials that  #1 are made of ;return if  all of #2 are the  same,dev
+CLEVR_dev_6797,Are all made of the same material?,return all ;return materials of #1 ;return are #2 all the same,dev
+CLEVR_dev_1710,Are all of the balls of the same material?,return all of the  balls ;return the  material for each of #1 ;return is  #2 the  same,dev
+CLEVR_dev_3253,Are all of the cubes blue and metallic?,return cubes ;return #1 that  are blue ;return #2 that  are metallic ;return the  number of  #3 ;return the  number of  #1 ;return if  #4 and #5 are equal,dev
+CLEVR_dev_3483,Are all of the cubes identical?,return cubes ;return are all of #1 identical,dev
+CLEVR_dev_5111,Are all of the cubes made from the same material?,return cubes ;return materials of #1 ;return are #2 all the  same,dev
+CLEVR_dev_2420,Are all of the cubes made out of the same material?,return cubes ;return materials of #1 ;return are all of #2 the same,dev
+CLEVR_dev_2268,Are all of the cubes shiny and large?,return cubes ;return if  all #1 are shiny ;return if  all #1 are large ;return #2 and #3,dev
+CLEVR_dev_3808,Are all of the cubes silver in color?,return cubes ;return #1 that  are silver ;return number of #1 ;return number of #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_2678,Are all of the cubes the same material?,return all of the  cubes ;return the  material for each of #1 ;return is  #2 the  same,dev
+CLEVR_dev_3183,Are all of the cylinders made out of the same material? ,return all of the  cylinders ;return the  material for each of #1 ;return is  #2 the  same,dev
+CLEVR_dev_3604,Are all of the gray objects close to one another?,return all of the  gray objects ;return are #1 close to  one another,dev
+CLEVR_dev_1911,Are all of the large objects spheres?,return large objects ;return #1 that  are spheres ;return number of  #1 ;return number of  #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_2886,Are all of the objects Spheres?,return objects ;return #1 that  are Spheres ;return number of #1 ;return number of #2 ;return is  #3 the same as #4,dev
+CLEVR_dev_6922,Are all of the objects of the same shape and color?,return objects ;return shape for each #1 ;return color for each #1 ;return if  #2 is  the  same for each #1 ;return if  #3 is  the  same for each #1 ;return both #4 and #5,dev
+CLEVR_dev_2314,Are all of the objects the same material and color?,"return all of the  objects ;return the  material for each of #1 ;return the  color for each of #1 ;return #2 ,  #3 ;return is  #4 the  same",dev
+CLEVR_dev_4318,Are all of the objects the same size and shape?,return objects ;return sizes of  #1 ;return shapes of  #1 ;return #1 where  #2 are the same ;return #1 where  #3 are the same ;return if  all #1 are in  both #4 and #5,dev
+CLEVR_dev_1756,Are all of the purple objects metallic or matte?,return objects ;return #1 that  are purple ;return if  all #2 are metallic ;return if  all #2 are matte ;return #3 or #4,dev
+CLEVR_dev_1648,Are all of the purple objects pictured metallic?,return purple objects ;return #1 that are metallic ;return number of #1 ;return number of #2 ;return is #3 the same as #4,dev
+CLEVR_dev_548,Are all of the shiny blue items on the outside of the image?,return all of the   shiny blue items ;return the   image ;return the   outside of #2 ;return are #1 on #3,dev
+CLEVR_dev_1824,Are all of the small spheres brown?,return small spheres ;return #1 that  are brown ;return number of #1 ;return number of #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_2930,Are all of the spheres gray?,return all of the  spheres ;return are #1 gray,dev
+CLEVR_dev_1931,Are all of the spheres yellow rubber?,return spheres ;return if  all #1 are yellow rubber,dev
+CLEVR_dev_3301,Are all of the yellow objects matte?,return all of the  yellow objects ;return are #1 matte,dev
+CLEVR_dev_3935,Are all shapes fully visible?,return shapes ;return are all #1 fully visible,dev
+CLEVR_dev_6582,Are all squares the same material? ,return squares ;return materials of #1 ;return are #2 all the  same,dev
+CLEVR_dev_4090,Are all the balls the same size and color?,"return balls ;return the  size of #1 ;return the  color of #1 ;return is  #2 the  same ;return is  #3 the  same ;return #4 ,  #5",dev
+CLEVR_dev_2037,Are all the big cubes shiny?,return big cubes ;return #1 that are shiny ;return number of #1 ;return number of #2 ;return is #3 the same as #4,dev
+CLEVR_dev_4175,Are all the blue shapes the same shade?,return blue shapes ;return shades of #1 ;return are #2 all the  same,dev
+CLEVR_dev_3998,Are all the brown cylinders made from the same material?,return brown cylinders ;return materials of #1 ;return are #2 all the  same,dev
+CLEVR_dev_4062,Are all the cubes here metallic?,return all the  cubes here ;return are #1 metallic,dev
+CLEVR_dev_4623,Are all the cubes made from the same material?,return cubes ;return materials of #1 ;return are #2 all the same,dev
+CLEVR_dev_2971,Are all the cylinders shiny?,return cylinders ;return #1 that  are shiny ;return number of  #1 ;return number of  #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_6011,Are all the cylinders the same size and color?,"return all the  cylinders ;return the  size for each of #1 ;return the  color for each of #1 ;return #2 ,  #3 ;return is  #4 the  same",dev
+CLEVR_dev_5733,Are all the gray items metallic?,return gray items ;return #1 that  are metallic ;return number of #1 ;return number of #2 ;return is  #3 the same as #4,dev
+CLEVR_dev_6612,Are all the items a different color?,return items ;return colors of  #1 ;return are #2 all different,dev
+CLEVR_dev_6828,Are all the large cubes the same color?,return cubes ;return #1 that  are large ;return colors of #2 ;return if  all #3 are the  same,dev
+CLEVR_dev_4582,Are all the large spheres shiny?,return spheres ;return size for each #1 ;return #1 with  large #2 ;return #3 that  are shiny ;return #3 besides #4 ;return number of  #5 ;return is  #6 equal to  zero,dev
+CLEVR_dev_5766,Are all the metallic objects the same size?,return metallic objects ;return sizes of #1 ;return are #2 all the same,dev
+CLEVR_dev_179,Are all the object boxes?,return objects ;return #1 that are boxes ;return number of #1 ;return number of #2 ;return is #3 the same as #4,dev
+CLEVR_dev_7188,Are all the objects balls?,return objects ;return if  all #1 are balls,dev
+CLEVR_dev_1530,Are all the objects cubes?,return objects ;return if  all the #1 are cubes,dev
+CLEVR_dev_3009,Are all the objects cylinders?,return objects ;return cylinders ;return number of  #1 ;return number of  #2 ;return if  #3 is  equal to  #4,dev
+CLEVR_dev_308,Are all the objects in the picture metal?,return objects ;return #1 that  are metal ;return number of #1 ;return number of #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_4179,Are all the objects made of metal?,return all the  objects ;return are #1 made of metal,dev
+CLEVR_dev_5016,Are all the objects made of the same material as the large cylinder?,return all the   objects ;return the   large cylinder ;return the   material for each of #1 ;return the   material of #2 ;return is  #3 the   same as #4,dev
+CLEVR_dev_2144,Are all the objects squares?,return all the  objects ;return are #1 squares,dev
+CLEVR_dev_3046,Are all the objects the same color?,return objects ;return colors of #1 ;return number of  #2 ;return if  #3 is  one,dev
+CLEVR_dev_5247,Are all the objects the same size and shape?,return objects ;return sizes of  #1 ;return shapes of  #1 ;return if  all #2 are the same ;return if  all #3 are the same ;return #4 and #5,dev
+CLEVR_dev_4903,Are all the purple cylinders made from the same material?,return purple cylinders ;return materials of #1 ;return are #2 all the  same,dev
+CLEVR_dev_3323,Are all the purple items the same shape?,return items ;return #1 that  are purple ;return the  shape of #2 ;return the  number of  #3 ;return if  #4 is  equal to  one,dev
+CLEVR_dev_5640,Are all the round objects shiny?,return objects ;return #1 that  are round ;return if  all #2 are shiny,dev
+CLEVR_dev_2780,Are all the rubber items blue?,return items ;return #1 that  are rubber ;return #2 that  are blue ;return #2 besides #3 ;return number of  #4 ;return is  #5 equal to  zero,dev
+CLEVR_dev_1252,Are all the rubber spheres the same size?,return spheres ;return #1 that  are rubber ;return number of  #2 for each size ;return #2 where #3 is  highest ;return number of  #2 ;return number of  #4 ;return is  #5 the  same as #6,dev
+CLEVR_dev_4883,Are all the shapes made out of rubber?,return all the  shapes ;return are #1 made out of rubber,dev
+CLEVR_dev_5495,Are all the shapes metallic? ,return shapes ;return #1 that  are metallic ;return number of  #1 ;return number of  #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_6854,Are all the shapes touching each other?,return shapes ;return are #1 all touching each other,dev
+CLEVR_dev_6901,Are all the shiny objects the same color?,return shiny objects ;return colors of #1 ;return are #2 all the  same,dev
+CLEVR_dev_3181,Are all the shiny spheres green?,return shiny spheres ;return #1 that  are green ;return number of  #1 ;return number of  #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_5734,Are all the small cubes made from metal?,return cubes ;return #1 that are small ;return if  all #2 are made from  metal,dev
+CLEVR_dev_5650,Are all the small objects metallic?,return small objects ;return #1 that are metallic ;return number of #1 ;return number of #2 ;return is #3 the same as #4,dev
+CLEVR_dev_5064,Are all the small objects the same shape?,return small objects ;return shapes of #1 ;return are #2 all the  same,dev
+CLEVR_dev_7148,Are all the small shapes the same color,return objects ;return #1 that  are small ;return colors of #2 ;return number of  #3 ;return is  #4 equal one,dev
+CLEVR_dev_6159,Are all the spheres in the picture green?,return the  picture ;return all the  spheres in #1 ;return are #2 green,dev
+CLEVR_dev_3831,Are all the spheres made of the same material?,return spheres ;return materials of #1 ;return are #2 all the  same,dev
+CLEVR_dev_3222,Are all the spheres shiny?,return spheres ;return #1 that  are shiny ;return number of  #1 ;return number of  #2 ;return is  #3 the  same as #4,dev
+CLEVR_dev_4401,Are all the spheres the same size and shape?,return spheres ;return sizes of #1 ;return shapes of #1 ;return if  all #1 have  the same #2 and  #3,dev
+CLEVR_dev_5236,Are all the tiny objects the same color?,return tiny objects ;return colors of #1 ;return are #2 all the  same,dev
+CLEVR_dev_5437,Are all the yellow items Matte?,return yellow items ;return #1 that  are Matte ;return number of #1 ;return number of #2 ;return is  #3 the same as #4,dev
+CLEVR_dev_2461,Are all these items metallic?,return the items ;return if  all of #1 are metallic,dev
+CLEVR_dev_2590,Are all these items of the same material?,return items ;return the  material of #1 ;return the  number of  #2 ;return is  #3 equal to  one,dev
+CLEVR_dev_2896,Are all three objects the same shape?,return objects ;return shapes of  #1 ;return are #2 all the same,dev
+CLEVR_dev_2178,Are any cubes partially hidden?,return cubes ;return if  any  #1 are partially hidden,dev
+CLEVR_dev_1622,Are any cubes small?,return cubes ;return #1 that  are small ;return are there any  #2,dev
+CLEVR_dev_6498,Are any cylinders the same material as the large purple metallic cube?,return cylinders ;return large cube ;return #2 that  is  purple ;return #2 that  is  metallic ;return #2 of both #3 and #4 ;return material of #1 ;return material of #5 ;return #1 where #6 is  the  same as #7 ;return are there any  #8,dev
+CLEVR_dev_1170,Are any objects made from the same material?,return objects ;return materials #1 are made from  ;return are there  any  #1 where #2 is  the same,dev
+CLEVR_dev_3224,Are any objects shiny?,return objects ;return are any  of #1 shiny,dev
+CLEVR_dev_6231,Are any of the balls identical in color?,return balls ;return colors of #1 ;return #1 where #2 are identical ;return are there any  #3,dev
+CLEVR_dev_828,Are any of the balls matte?,return balls ;return is  any  of #1 matte,dev
+CLEVR_dev_861,Are any of the balls metallic?,return balls ;return is  any  of #1 metallic,dev
+CLEVR_dev_1645,Are any of the balls purple?,return balls ;return #1 that  are purple ;return are there  any  #2,dev
+CLEVR_dev_851,Are any of the cubes identical?,return cubes ;return are any  of #1 identical,dev
+CLEVR_dev_885,Are any of the cylinders matte?,return cylinders ;return #1 that  are matte ;return are there  any  #2,dev
+CLEVR_dev_4913,Are any of the large cylinders matte?,return cylinders ;return #1 that  are large ;return is  any  of #2 matte,dev
+CLEVR_dev_1243,Are any of the objects a cylinder?,return objects ;return #1 that are cylinders ;return are there any  #2,dev
+CLEVR_dev_3608,Are any of the red objects shiny?,return red objects ;return #1 that  are shiny ;return are there  any  #2,dev
+CLEVR_dev_6519,Are any of the small objects shiny?,return objects ;return #1 that  are small ;return if  any  #2 are shiny,dev
+CLEVR_dev_5557,Are any of these objects the same size and shape?,return objects ;return sizes of #1 ;return shapes of #1 ;return #1 with  the  same #2 ;return #1 with  the  same #3 ;return #1 in both #4 and #5,dev
+CLEVR_dev_1090,Are any small blue objects present?,return objects ;return #1 that  are small ;return is  any  of #2 blue,dev
+CLEVR_dev_1001,Are any small yellow objects present?,return small yellow objects ;return are any  #1 present,dev
+CLEVR_dev_382,Are any two things both the same color and material?,return objects ;return colors of #1 ;return materials of #1 ;return #1 where  #2 are the  same ;return #1 where  #3 are the  same ;return #1 in  both  #4 and #5 ;return if  there  are any two #6,dev
+CLEVR_dev_5502,Are both blocks larger than all the balls?,return blocks ;return size of #1 ;return balls ;return size of #3 ;return are both #2 larger than  all #4,dev
+CLEVR_dev_5589,Are both cylinders in this picture the same color?,return cylinders ;return #1 in this picture ;return the  color of #2 ;return the  number of  #3 ;return is  #4 equal to  one,dev

@@ -1,0 +1,8 @@
+personname -> quoted, " #(PersonName " quoted ")"
+string -> quoted, " #(String " quoted ")"
+respondcomment -> quoted, " #(RespondComment " quoted ")"
+locationkeyphrase -> quoted, " #(LocationKeyphrase " quoted ")"
+path -> quoted, " #(Path " quoted ")"
+
+list_path_ -> !"(empty list)", " #(List[Path] [])"
+list_recipient_ -> !"(empty recipient list)", " #(List[Recipient] [])"
