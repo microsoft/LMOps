@@ -4,11 +4,7 @@ This repository contains the code implementation and the trained prompt retrieve
 
 We propose **UPRISE** (**U**niversal **P**rompt **R**etrieval for **I**mproving zero-**S**hot **E**valuation), which tunes a lightweight and versatile retriever that automatically retrieves prompts for a given zero-shot task input. Specifically, we demonstrate universality in a cross-task and cross-model scenario: UPRISE tunes a prompt retriever on multiple tasks with a small frozen LLM, but conducts inference on unseen task types with a different larger LLM.
 
-<p align='center'>
-    <img src='https://github.com/cdxeve/UPRISE/files/11035914/intro_fig.pdf' alt='' width='600'/>
-</p>
-
-
+<img src="https://user-images.githubusercontent.com/4668004/226875115-36dbee82-40a0-4e42-b30e-047a8d756fc2.png" width="400" height="224">
 
 ## Evaluate UPRISE on Any Task with Any LLM
 ### 1. Environment setup
