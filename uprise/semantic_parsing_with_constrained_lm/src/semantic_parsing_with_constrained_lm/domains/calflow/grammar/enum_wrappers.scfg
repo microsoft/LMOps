@@ -1,0 +1,5 @@
+holiday -> holiday_entity, " #(Holiday \"" holiday_entity "\")"
+placefeature -> place_feature_entity, " #(PlaceFeature \"" place_feature_entity "\")"
+weatherquantifier -> weather_quantifier_entity, " #(WeatherQuantifier \"" weather_quantifier_entity "\")"
+responsestatustype -> response_entity, " #(ResponseStatusType \"" response_entity "\")"
+number -> number_entity, " #(Number" number_entity ")"

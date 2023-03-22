@@ -3,7 +3,7 @@
 # LMOps
 LMOps is a research initiative on fundamental research and technology for building AI products w/ foundation models, especially on the general technology for enabling AI capabilities w/ LLMs and Generative AI models.
 
-- Better Prompts: [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616)
+- Better Prompts: [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616), [Universal prompt retrieval] (https://arxiv.org/abs/2303.08518)
 - Longer Context: [Structured prompting](https://arxiv.org/abs/2212.06713), [Length-Extrapolatable Transformers](https://arxiv.org/abs/2212.10554)
 - Knowledge Augmentation (TBA)
 - Fundamentals: [Understanding In-Context Learning](https://arxiv.org/abs/2212.10559)

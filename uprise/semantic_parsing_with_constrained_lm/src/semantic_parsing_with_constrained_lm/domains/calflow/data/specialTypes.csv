@@ -1,0 +1,114 @@
+#PersonName,PersonName
+#String,String
+#RespondComment,RespondComment
+#RespondStatusType,RespondStatusType
+#LocationKeyphrase,LocationKeyphrase
+#Month,Month
+#DayOfWeek,DayOfWeek
+#PlaceFeature,PlaceFeature
+#WeatherProp,WeatherProp
+#WeatherQuantifier,WeatherQuantifier
+#Holiday,Holiday
+#Path,Path
+#Number,Number
+#PlaceFeature,PlaceFeature
+PeriodDuration,PeriodDuration,duration: Duration,period: Period
+PeriodDuration,PeriodDuration,duration: Duration
+PeriodDuration,PeriodDuration,period: Period
+Setter:Constraint[Event].reminder,Constraint[Event],Constraint[Event]: Constraint[Event],reminder: Constraint[PeriodDuration]
+Setter:Constraint[Event].nonEmptyBase,Constraint[Event],Constraint[Event]: Constraint[Event],nonEmptyBase: Constraint[Event]
+Setter:Constraint[Event].id,Constraint[Event],Constraint[Event]: Constraint[Event],id: Constraint[EventId]
+Setter:Constraint[CreateCommitEvent].data,Constraint[CreateCommitEvent],Constraint[CreateCommitEvent]: Constraint[CreateCommitEvent],data: Constraint[EventSpec]
+Setter:Constraint[Email].sentDateTime,Constraint[Email],Constraint[Email]: Constraint[Email],sentDateTime: Constraint[DateTime]
+Setter:Constraint[Email].importance,Constraint[Email],Constraint[Email]: Constraint[Email],importance: Constraint[Importance]
+Setter:Constraint[Event].subject,Constraint[Event],Constraint[Event]: Constraint[Event],subject: Constraint[String]
+Setter:Constraint[Event].showAs,Constraint[Event],Constraint[Event]: Constraint[Event],showAs: Constraint[ShowAsStatus]
+Setter:Constraint[Event].isCancelled,Constraint[Event],Constraint[Event]: Constraint[Event],isCancelled: Constraint[Boolean]
+Setter:Constraint[TeamsChat].toRecipients,Constraint[TeamsChat],Constraint[TeamsChat]: Constraint[TeamsChat],toRecipients: Constraint[List[Recipient]]
+Setter:Constraint[Event].sensitivity,Constraint[Event],Constraint[Event]: Constraint[Event],sensitivity: Constraint[Sensitivity]
+Setter:Constraint[EventSpec].start,Constraint[EventSpec],Constraint[EventSpec]: Constraint[EventSpec],start: Constraint[DateTime]
+Setter:Constraint[Email].bccRecipients,Constraint[Email],Constraint[Email]: Constraint[Email],bccRecipients: Constraint[List[Recipient]]
+Setter:Constraint[TeamsChat].toEventId,Constraint[TeamsChat],Constraint[TeamsChat]: Constraint[TeamsChat],toEventId: Constraint[EventId]
+Setter:Constraint[Email].from,Constraint[Email],Constraint[Email]: Constraint[Email],from: Constraint[Recipient]
+Setter:Constraint[Event].location,Constraint[Event],Constraint[Event]: Constraint[Event],location: Constraint[LocationKeyphrase]
+Setter:Constraint[Event].isOneOnOne,Constraint[Event],Constraint[Event]: Constraint[Event],isOneOnOne: Constraint[Boolean]
+Setter:Constraint[Date].day,Constraint[Date],Constraint[Date]: Constraint[Date],day: Constraint[Number]
+Setter:Constraint[Event].start,Constraint[Event],Constraint[Event]: Constraint[Event],start: Constraint[DateTime]
+Setter:Constraint[Attendee].recipient,Constraint[Attendee],Constraint[Attendee]: Constraint[Attendee],recipient: Constraint[Recipient]
+Setter:Constraint[Email].body,Constraint[Email],Constraint[Email]: Constraint[Email],body: Constraint[String]
+Setter:Constraint[Date].dayOfWeek,Constraint[Date],Constraint[Date]: Constraint[Date],dayOfWeek: Constraint[DayOfWeek]
+Setter:Constraint[Place].name,Constraint[Place],Constraint[Place]: Constraint[Place],name: Constraint[String]
+Setter:Constraint[Event].isAllDay,Constraint[Event],Constraint[Event]: Constraint[Event],isAllDay: Constraint[Boolean]
+Setter:Constraint[Email].subject,Constraint[Email],Constraint[Email]: Constraint[Email],subject: Constraint[String]
+Setter:Constraint[Date].year,Constraint[Date],Constraint[Date]: Constraint[Date],year: Constraint[Number]
+Setter:Constraint[Event].attendees,Constraint[Event],Constraint[Event]: Constraint[Event],attendees: Constraint[List[Attendee]]
+Setter:Constraint[Date].month,Constraint[Date],Constraint[Date]: Constraint[Date],month: Constraint[Month]
+Setter:Constraint[TeamsChat].body,Constraint[TeamsChat],Constraint[TeamsChat]: Constraint[TeamsChat],body: Constraint[String]
+Setter:Constraint[Event].teamsMeetingLink,Constraint[Event],Constraint[Event]: Constraint[Event],teamsMeetingLink: Constraint[String]
+Setter:Constraint[Event].duration,Constraint[Event],Constraint[Event]: Constraint[Event],duration: Constraint[Duration]
+Setter:Constraint[Event].organizer,Constraint[Event],Constraint[Event]: Constraint[Event],organizer: Constraint[Recipient]
+Setter:Constraint[Event].end,Constraint[Event],Constraint[Event]: Constraint[Event],end: Constraint[DateTime]
+Setter:Constraint[Email].toRecipients,Constraint[Email],Constraint[Email]: Constraint[Email],toRecipients: Constraint[List[Recipient]]
+Setter:Constraint[DateTime].date,Constraint[DateTime],Constraint[DateTime]: Constraint[DateTime],date: Constraint[Date]
+Setter:Constraint[DateTime].time,Constraint[DateTime],Constraint[DateTime]: Constraint[DateTime],time: Constraint[Time]
+Setter:Constraint[Email].ccRecipients,Constraint[Email],Constraint[Email]: Constraint[Email],ccRecipients: Constraint[List[Recipient]]
+Constraint[Constraint[Time]],Constraint[CalflowIntension[Constraint[Time]]],
+Constraint[Constraint[Recipient]],Constraint[CalflowIntension[Constraint[Recipient]]],
+Constraint[Time],Constraint[Time],
+Constraint[Recipient],Constraint[Recipient],
+Constraint[Constraint[DateTime]],Constraint[CalflowIntension[Constraint[DateTime]]],
+Constraint[Constraint[Date]],Constraint[CalflowIntension[Constraint[Date]]],
+Constraint[PlaceSearchResponse],Constraint[PlaceSearchResponse],
+Constraint[Constraint[Event]],Constraint[CalflowIntension[Constraint[Event]]],
+AlwaysFalseConstraint[List[Attendee]],Constraint[List[Attendee]],
+AlwaysFalseConstraint[LocationKeyphrase],Constraint[LocationKeyphrase],
+AlwaysFalseConstraint[ShowAsStatus],Constraint[ShowAsStatus],
+AlwaysTrueConstraint[Boolean],Constraint[Boolean],
+AlwaysTrueConstraint[Constraint[DateTime]],Constraint[Constraint[DateTime]],
+AlwaysTrueConstraint[Constraint[Date]],Constraint[Constraint[Date]],
+AlwaysTrueConstraint[Constraint[Event]],Constraint[Constraint[Event]],
+AlwaysTrueConstraint[Constraint[List[Attendee]],Constraint[Constraint[List[Attendee]]],
+AlwaysTrueConstraint[Constraint[Point]],Constraint[Constraint[Point]],
+AlwaysTrueConstraint[Constraint[Recipient]],Constraint[Constraint[Recipient]],
+AlwaysTrueConstraint[Constraint[Time]],Constraint[Constraint[Time]],
+AlwaysTrueConstraint[DateTime],Constraint[DateTime],
+AlwaysTrueConstraint[Date],Constraint[Date],
+AlwaysTrueConstraint[DayOfWeek],Constraint[DayOfWeek],
+AlwaysTrueConstraint[Duration],Constraint[Duration],
+AlwaysTrueConstraint[Dynamic],Constraint[Dynamic],
+AlwaysTrueConstraint[EventId],Constraint[EventId],
+AlwaysTrueConstraint[Event],Constraint[Event],
+AlwaysTrueConstraint[Holiday],Constraint[Holiday],
+AlwaysTrueConstraint[Length],Constraint[Length],
+AlwaysTrueConstraint[List[Attendee]],Constraint[List[Attendee]],
+AlwaysTrueConstraint[List[Event]],Constraint[List[Event]],
+AlwaysTrueConstraint[LocationKeyphrase],Constraint[LocationKeyphrase],
+AlwaysTrueConstraint[Month],Constraint[Month],
+AlwaysTrueConstraint[Number],Constraint[Number],
+AlwaysTrueConstraint[PersonName],Constraint[PersonName],
+AlwaysTrueConstraint[Place],Constraint[Place],
+AlwaysTrueConstraint[Recipient],Constraint[Recipient],
+AlwaysTrueConstraint[RespondComment],Constraint[RespondComment],
+AlwaysTrueConstraint[RespondShouldSend],Constraint[RespondShouldSend],
+AlwaysTrueConstraint[ResponseStatusType],Constraint[ResponseStatusType],
+AlwaysTrueConstraint[ShowAsStatus],Constraint[ShowAsStatus],
+AlwaysTrueConstraint[String],Constraint[String],
+AlwaysTrueConstraint[Temperature],Constraint[Temperature],
+AlwaysTrueConstraint[Time],Constraint[Time],
+AlwaysTrueConstraint[WeatherTable],Constraint[WeatherTable],
+append,List[Path],list: List[Path],value: Path,
+roleConstraint,Constraint[CalflowIntension[Constraint[DateTime]]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Constraint[Date]]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Constraint[Point]]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Constraint[String]]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Constraint[Time]]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[CreateCommitEvent]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[DateTime]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Date]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[Dynamic]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[EventId]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[LocationKeyphrase]],path: List[Path],
+roleConstraint,Constraint[CalflowIntension[String]],path: List[Path],
+ReviseConstraint,CalflowIntension[Dynamic],rootLocation: Constraint[CalflowIntension[Dynamic]],oldLocation: Constraint[Constraint[Event]],new: Constraint[Event],
+ReviseConstraint,CalflowIntension[Dynamic],rootLocation: CalflowIntension[Dynamic],oldLocation: Constraint[Constraint[Event]],new: Constraint[Event],
+ReviseConstraint,CalflowIntension[Dynamic],rootLocation: Constraint[CalflowIntension[Dynamic]],oldLocation: Constraint[CalflowIntension[Constraint[Event]]],new: Constraint[Event],
