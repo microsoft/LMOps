@@ -1,0 +1,52 @@
+defaults:
+  - encoder: hf_bert
+  - ctx_sources: default_sources
+
+# A trained bi-encoder checkpoint file to initialize the model
+model_file:
+
+# Name of the all-passages resource
+ctx_src:
+
+# which (ctx or query) encoder to be used for embedding generation
+encoder_type: ctx
+
+# output .tsv file path to write results to
+out_file:
+
+# Whether to lower case the input text. Set True for uncased models, False for the cased ones.
+do_lower_case: True
+
+# Number(0-based) of data shard to process
+shard_id: 0
+
+# Total amount of data shards
+num_shards: 1
+
+# Batch size for the passage encoder forward pass (works in DataParallel mode)
+batch_size: 512
+
+tables_as_passages: False
+
+# tokens which won't be slit by tokenizer
+special_tokens:
+
+tables_chunk_sz: 100
+
+# TODO
+tables_split_type: type1
+
+
+# TODO: move to a conf group
+# local_rank for distributed training on gpus
+local_rank: -1
+device:
+distributed_world_size:
+distributed_port:
+no_cuda: False
+n_gpu:
+fp16: False
+
+# For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+#        "See details at https://nvidia.github.io/apex/amp.html
+fp16_opt_level: O1

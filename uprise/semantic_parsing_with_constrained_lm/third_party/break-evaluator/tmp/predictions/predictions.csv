@@ -1,0 +1,100 @@
+decomposition
+"cylinders ; cubes ; number of #1 ; number of #2 ; which is more of #3 , #4"
+objects ; #1 that have in common
+large spheres ; color of #1
+cubes ; #1 that are matte ; the color of #2
+objects ; #1 that are different ; number of #2
+cylinders in this image ; colors of #1 ; Are all #2 the same
+cylinders ; materials of #1 ; Are #2 all the same
+all made of the same material
+balls ; materials of #1 ; Are #2 all the same
+cubes ; #1 that are blue ; #1 that are metallic ; number of #2 ; number of #3 ; if #4 and #5 are equal
+cubes ; if all #1 Are identical
+cubes ; material for each #1 ; Are all #2 the same
+cubes ; materials of #1 ; Are #2 all the same
+cubes ; #1 that are shiny ; #2 that are large ; number of #2 ; number of #3 ; if #4 and #5 are equal
+cubes ; #1 that are silver ; number of #2 ; number of #1 ; if #3 and #4 are equal
+cubes ; material for each #1 ; Are all #2 the same
+cylinders ; materials of #1 ; Are #2 all the same
+objects ; #1 that are gray ; if all #2 Are close to one another
+large objects ; #1 that Are spheres ; number of #1 ; number of #2 ; is #3 the same as #4
+objects ; #1 that are Spheres ; number of #1 ; number of #2 ; is #3 the same as #4
+objects ; shapes of #1 ; materials of #1 ; #1 where #2 are the same ; #1 where #3 are the same ; #1 in both #4 and #5 ; number of #6 ; if #7 is at least one
+objects ; material for each #1 ; color for each #1 ; Are all #2 the same ; Are all #3 the same ; #4 and #5
+objects ; sizes of #1 ; shape of #1 ; #1 where #2 are the same ; #1 where #3 are the same ; #1 in both #4 and #5 ; if there are any #6
+"objects ; #1 that are purple ; #1 that are matte ; number of #2 ; number of #3 ; which is highest of #4 , #5"
+purple objects ; #1 that Are metallic ; number of #1 ; number of #2 ; is #3 the same as #4
+items ; #1 that are shiny ; #2 that are blue ; if all #3 Are on the outside of the image
+small spheres ; #1 that Are brown ; number of #1 ; number of #2 ; is #3 the same as #4
+spheres ; if all #1 Are gray
+spheres ; #1 that are rubber ; number of #1 ; number of #2 ; is #3 the same as #4
+yellow objects ; #1 that Are matte ; number of #1 ; number of #2 ; is #3 the same as #4
+shapes ; #1 that Are fully visible ; number of #1 ; number of #2 ; is #3 the same as #4
+squares ; materials of #1 ; Are #2 all the same
+balls ; sizes of #1 ; materials of #1 ; if all of #3 are the same ; if all #4 Are the same ; #5 and #6
+big cubes ; #1 that Are shiny ; number of #1 ; number of #2 ; is #3 the same as #4
+blue shapes ; colors of #1 ; Are #2 all the same
+brown cylinders ; materials of #1 ; Are #2 all the same
+cubes ; if all #1 Are metallic
+cubes ; materials of #1 ; Are all #2 the same
+cylinders ; #1 that Are shiny ; number of #1 ; number of #2 ; is #3 the same as #4
+cylinders ; sizes of #1 ; materials of #1 ; if all of #3 are the same ; if all #4 Are the same ; #5 and #6
+gray items ; #1 that Are metallic ; number of #1 ; number of #2 ; is #3 the same as #4
+items ; colors of #1 ; Are all #2 a different
+large cubes ; colors of #1 ; Are #2 all the same
+large spheres ; #1 that Are shiny ; number of #1 ; number of #2 ; is #3 the same as #4
+metallic objects ; sizes of #1 ; Are #2 all the same
+object ; Are #1 boxes
+objects ; #1 that are balls ; number of #1 ; number of #2 ; is #3 the same as #4
+objects ; #1 that are cubes ; number of #1 ; number of #2 ; is #3 the same as #4
+objects ; #1 that are cylinders ; number of #1 ; number of #2 ; is #3 the same as #4
+objects ; #1 in the picture ; if all #2 Are metal
+objects ; #1 that are made of metal ; number of #1 ; number of #2 ; if #3 and #4 are equal
+objects ; large cylinder ; material of #1 ; material of #2 ; #1 where #3 is the same as #4 ; Are there any #5
+objects ; if all #1 Are squares
+objects ; colors of #1 ; Are all #2 the same
+objects ; sizes of #1 ; shape of #1 ; #1 where #2 are the same ; #1 where #3 are the same ; if all #4 Are the same ; #5 and #6
+purple cylinders ; materials of #1 ; Are #2 all the same
+items ; #1 that are purple ; shape for each #2 ; if all #3 Are the same
+round objects ; #1 that Are shiny ; number of #1 ; number of #2 ; is #3 the same as #4
+items ; #1 that are rubber ; #2 that are blue ; number of #2 ; number of #3 ; if #4 and #5 are equal
+rubber spheres ; sizes of #1 ; Are #2 all the same
+shapes ; #1 that are made out of rubber ; number of #1 ; number of #2 ; if #3 and #4 are equal
+shapes ; #1 that are metallic ; number of #1 ; number of #2 ; is #3 the same as #4
+shapes ; #1 that are touching each other ; number of #1 ; number of #2 ; if #3 and #4 are equal
+shiny objects ; colors of #1 ; Are #2 all the same
+shiny spheres ; #1 that Are green ; number of #1 ; number of #2 ; is #3 the same as #4
+small cubes ; #1 that are made from metal ; number of #1 ; number of #2 ; is #3 the same as #4
+small objects ; #1 that Are metallic ; number of #1 ; number of #2 ; is #3 the same as #4
+small objects ; shapes of #1 ; Are #2 all the same
+small shapes ; colors of #1 ; Are #2 all the same
+spheres ; #1 in the picture ; if all #2 are green
+spheres ; materials of #1 ; Are #2 all the same
+spheres ; #1 that Are shiny ; number of #1 ; number of #2 ; is #3 the same as #4
+spheres ; sizes of #1 ; materials of #1 ; if all of #3 are the same ; if all #4 Are the same ; #5 and #6
+tiny objects ; colors of #1 ; Are #2 all the same
+yellow items ; #1 that Are Matte ; number of #1 ; number of #2 ; is #3 the same as #4
+items ; #1 that are metallic ; number of #1 ; number of #2 ; is #3 the same as #4
+items ; materials of #1 ; Are #2 all the same
+objects ; shapes of #1 ; Are #2 all the same
+cubes ; #1 that are partially hidden ; are there any #2
+cubes ; #1 that Are small ; Are there any #2
+cylinders ; large purple metallic cube ; material of #1 ; material of #2 ; #1 where #3 is the same as #4 ; Are there any #5
+objects ; material for each #1 ; Are any #1 made from same
+objects ; #1 that Are shiny ; Are there any #2
+balls ; #1 that Are identical ; Are there any #2
+balls ; Are any #1 matte
+balls ; Are any #1 metallic
+balls ; Are any #1 purple
+cubes ; #1 that Are identical ; Are there any #2
+cylinders ; Are any #1 matte
+cylinders ; #1 that are large ; if any #2 are matte
+objects ; Are any #1 a cylinder
+objects ; #1 that are red ; if any #2 are shiny
+objects ; #1 that are small ; if any #2 are shiny
+objects ; sizes of #1 ; shape of #1 ; #1 where #2 are the same ; #1 where #3 are the same ; #1 in both #4 and #5 ; if there are any #6
+objects ; #1 that are small ; #2 that are blue ; if any #3
+objects ; #1 that are small ; #2 that are yellow ; if any #3
+things ; colors of #1 ; materials of #1 ; #1 where #2 are the same ; #1 where #3 are the same ; #4 and #5
+blocks ; balls ; if both #1 Are larger than #2
+cylinders in this picture ; colors of #1 ; Are both #2 the same

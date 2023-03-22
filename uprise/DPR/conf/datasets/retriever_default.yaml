@@ -1,0 +1,8 @@
+# @package _group_
+qa_epr:
+  _target_: dpr.data.retriever_data.EPRQASrc
+  task_name: ???
+  instruction_num: 1 
+  cache_dir: 
+  task_setup_type: q
+  split: 

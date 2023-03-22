@@ -1,0 +1,21 @@
+# @package _group_
+
+eval_step: 2000
+batch_size: 16
+dev_batch_size: 72
+adam_eps: 1e-8
+adam_betas: (0.9, 0.999)
+max_grad_norm: 1.0
+log_batch_step: 100
+train_rolling_loss_step: 100
+weight_decay: 0.0
+learning_rate: 1e-5
+
+# Linear warmup over warmup_steps.
+warmup_steps: 0
+
+# Number of updates steps to accumulate before performing a backward/update pass.
+gradient_accumulation_steps: 1
+
+# Total number of training epochs to perform.
+num_train_epochs: 100000

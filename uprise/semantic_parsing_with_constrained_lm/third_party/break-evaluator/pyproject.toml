@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "break-evaluator"
+version = "0.1.0"
+description = "Forked from https://github.com/allenai/break-evaluator"
+authors = []
+packages = [
+    { include = "evaluation" },
+    { include = "scripts" },
+    { include = "utils" },
+]
+
+[tool.poetry.dependencies]
+python = "~3.7.0"
+edit-distance = "1.0.4"
+editdistance = "0.5.3"
+matplotlib = "3.1.2"
+networkx = "2.4"
+neuralcoref = "4.0"
+overrides = "2.8.0"
+pandas = "0.25.3"
+lxml = "4.5.0"
+progressbar = "2.5"
+scipy = "1.4.1"
+spacy = "2.1.9"
+en-core-web-sm = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.1.0/en_core_web_sm-2.1.0.tar.gz"}
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.scripts]
+break_evaluate_predictions = "scripts.evaluate_predictions:real_main"
+break_qdmr_to_program = "scripts.qdmr_to_program:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
