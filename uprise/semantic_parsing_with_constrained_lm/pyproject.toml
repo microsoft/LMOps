@@ -16,7 +16,7 @@ typer = "^0.3.0"
 jsons = "^0.10.1"
 more_itertools = "^8.2.0"
 transformers = "4.5.0"
-httpx = {version = "^0.16.1", extras = ["http2"]}
+httpx = {version = "^0.23.0", extras = ["http2"]}
 datasets = "1.1.3"
 appdirs = "^1.4.4"
 sm-dataflow = {git = "https://github.com/microsoft/task_oriented_dialogue_as_dataflow_synthesis.git"}
