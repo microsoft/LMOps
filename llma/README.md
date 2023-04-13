@@ -1,4 +1,4 @@
-# LLMA: Language Model Accelerator
+# LLMA: Large Language Model Accelerator
 
 ## News
 - [Paper Release] April, 2023: [Inference with Reference: Lossless Acceleration of Large Language Models](https://arxiv.org/abs/2304.04487)
