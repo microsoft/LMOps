@@ -5,6 +5,7 @@ LMOps is a research initiative on fundamental research and technology for buildi
 
 - Better Prompts: [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616), [Universal prompt retrieval](https://arxiv.org/abs/2303.08518)
 - Longer Context: [Structured prompting](https://arxiv.org/abs/2212.06713), [Length-Extrapolatable Transformers](https://arxiv.org/abs/2212.10554)
+- Faster Inference: [Lossless Acceleration of LLMs](https://arxiv.org/abs/2304.04487)
 - Knowledge Augmentation (TBA)
 - Fundamentals: [Understanding In-Context Learning](https://arxiv.org/abs/2212.10559)
 
@@ -14,6 +15,7 @@ LMOps is a research initiative on fundamental research and technology for buildi
 - [microsoft/torchscale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
 
 ## News
+- [Paper Release] April, 2023: [Inference with Reference: Lossless Acceleration of Large Language Models](https://arxiv.org/abs/2304.04487)
 - [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
 - [Paper&Model&Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
 - [Paper&Code Release] Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.06713)
@@ -56,6 +58,23 @@ Advanced technologies facilitating prompting language models.
 > - Context-guided imaginary word learning for general usability
 
 ![Extensible Prompts for Language Models](https://user-images.githubusercontent.com/1070872/207856788-5409d04d-c406-4b29-ae7b-2732e727d4cc.png)
+
+
+## LLMA: LLM Accelerators
+
+### Accelerate LLM Inference with References
+
+[Paper] [Inference with Reference: Lossless Acceleration of Large Language Models](https://arxiv.org/abs/2304.04487)
+
+> - Outputs of LLMs often have significant overlaps with some references (e.g., retrieved documents).
+
+> - LLMA losslessly accelerate the inference of LLMs by copying and verifying text spans from references into the LLM inputs.
+
+> - Applicable to important LLM scenarios such as retrieval-augmented generation and multi-turn conversations.
+
+> - Achieves 2~3 times speed-up without additional models.
+
+![image](https://user-images.githubusercontent.com/6700539/231664563-aec35679-b4ab-4b6b-b6b4-b2b4ea1aab53.png)
 
 
 ## Fundamental Understanding of LLMs
