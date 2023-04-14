@@ -5,7 +5,7 @@ LMOps is a research initiative on fundamental research and technology for buildi
 
 - Better Prompts: [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616), [Universal prompt retrieval](https://arxiv.org/abs/2303.08518)
 - Longer Context: [Structured prompting](https://arxiv.org/abs/2212.06713), [Length-Extrapolatable Transformers](https://arxiv.org/abs/2212.10554)
-- Faster Inference: [Lossless Acceleration of LLMs](https://arxiv.org/abs/2304.04487)
+- Faster Inference (LLM Accelerator): [Lossless Acceleration of LLMs](https://arxiv.org/abs/2304.04487)
 - Knowledge Augmentation (TBA)
 - Fundamentals: [Understanding In-Context Learning](https://arxiv.org/abs/2212.10559)
 
@@ -17,8 +17,8 @@ LMOps is a research initiative on fundamental research and technology for buildi
 ## News
 - [Paper Release] April, 2023: [Inference with Reference: Lossless Acceleration of Large Language Models](https://arxiv.org/abs/2304.04487)
 - [Paper Release] Dec, 2022: [Why Can GPT Learn In-Context? Language Models Secretly Perform Finetuning as Meta Optimizers](https://arxiv.org/abs/2212.10559)
-- [Paper&Model&Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
-- [Paper&Code Release] Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.06713)
+- [Paper & Model & Demo Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist)
+- [Paper & Code Release] Dec, 2022: [Structured Prompting: Scaling In-Context Learning to 1,000 Examples](https://arxiv.org/abs/2212.06713)
 - [Paper Release] Nov, 2022: [Extensible Prompts for Language Models](https://arxiv.org/abs/2212.00616)
 
 ## Prompt Intelligence
