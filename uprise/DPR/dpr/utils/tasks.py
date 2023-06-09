@@ -1,89 +1,149 @@
 import random
 from datasets import load_dataset
-import re 
+import re
+import tqdm
+import glob
 import logging
+
 logger = logging.getLogger(__name__)
-from typing import List
 
-train_cluster_map={
-    'close_qa': ['natural_questions', 'arc_c', 'arc_e'],
-    'common_reason': ['copa', 'piqa','hellaswag'],
-    'coreference': ['winogrande','wsc'],
-    'nli': ['mnli','qnli','rte','snli'],
-    'paraphrase': ['mrpc','paws','qqp'],
-    'reading': ['multirc','openbookqa','squad_v1','boolq'],
-    'sentiment': ['yelp','sentiment140', 'sst2'],
-    'struct2text': ['common_gen','e2e_nlg','dart'],
-    'summarize': ['aeslc','ag_news','gigaword'],
+
+train_cluster_map = {
+    "close_qa": ["natural_questions", "arc_c", "arc_e"],
+    "common_reason": ["copa", "piqa", "hellaswag"],
+    "coreference": ["winogrande", "wsc"],
+    "nli": ["mnli", "qnli", "rte", "snli"],
+    "paraphrase": ["mrpc", "paws", "qqp"],
+    "reading": ["multirc", "openbookqa", "squad_v1", "boolq"],
+    "sentiment": ["yelp", "sentiment140", "sst2"],
+    "struct2text": ["common_gen", "e2e_nlg", "dart"],
+    "summarize": ["aeslc", "ag_news", "gigaword"],
+
+    # train examples for a quick try
+    "train_example_1": ["rte"],
+    "train_example_2": ["copa", "piqa"],
+
+    # cot prompting example
+    "cot_train_example": ["pubmed_qa"]
 }
-test_cluster_map={
-    'close_qa': ['natural_questions', 'arc_c', 'arc_e'],
-    'common_reason': ['copa','piqa','hellaswag'],
-    'coreference': ['winogrande','wsc','wsc273'],
-    'nli': ['rte','mnli_m','mnli_mm','qnli','snli'],
-    'paraphrase': ['mrpc','paws','qqp'],
-    'reading': ['multirc','openbookqa','squad_v1','boolq'],
-    'sentiment': ['yelp','sentiment140', 'sst2'],
-    'struct2text': ['common_gen','e2e_nlg','dart'],
-    'summarize': ['aeslc','ag_news','gigaword'],
+test_cluster_map = {
+    "close_qa": ["natural_questions", "arc_c", "arc_e"],
+    "common_reason": ["copa", "piqa", "hellaswag"],
+    "coreference": ["winogrande", "wsc", "wsc273"],
+    "nli": ["rte", "mnli_m", "mnli_mm", "qnli", "snli"],
+    "paraphrase": ["mrpc", "paws", "qqp"],
+    "reading": ["multirc", "openbookqa", "squad_v1", "boolq"],
+    "sentiment": ["yelp", "sentiment140", "sst2"],
+    "struct2text": ["common_gen", "e2e_nlg", "dart"],
+    "summarize": ["aeslc", "ag_news", "gigaword"],
+    
+    # test examples for a quick try
+    "test_example_1": ["arc_e"],
+    "test_example_2": ["mrpc"],
+    
+    # cot prompting example
+    "cot_test_example": ["pubmed_qa"]
 }
 
-def get_prompt_files(prompt_pool_path, test_cluster: List[str]): 
-    '''
-    test cluster: list of cluster(s) for testing
-    '''
-    prompt_file='{prompt_pool_path}/{cluster}/*'.replace('{prompt_pool_path}',prompt_pool_path)
-    prompt_pool_dirs=[prompt_file.replace('{cluster}',cluster) for cluster in train_cluster_map.keys() if cluster not in test_cluster]
+
+def get_prompt_files(prompt_pool_path, train_clusters: str):
+    """
+    train_clusters: a string representing all clusters concatenated by `+`,
+    e.g.,
+    `nli+close_qa` denotes nli and close_qa clusters
+    """
+    clusters=train_clusters.split('+')
+    prompt_pool_dirs = [
+        f"{prompt_pool_path}/{cluster}/*"
+        for cluster in clusters
+    ]
     logger.info("prompt pool dirs: %s", prompt_pool_dirs)
-    prompt_pool_paths=[]
+    prompt_pool_paths = []
     for dir in prompt_pool_dirs:
         prompt_pool_paths.extend(glob.glob(dir))
     return prompt_pool_paths
 
+
 class App:
     def __init__(self):
         self.cls_dic = {}
+
     def add(self, key):
         def adder(cls):
             self.cls_dic[key] = cls
             return cls
         return adder
 
-class BaseTask(object):    
-    def filter(self, entry):
+
+class BaseTask(object):
+    def __init__(self):
+        self.finder_L = 50  # num of prompts to be sampled from the pool for scoring
+        self.run_scorer_bsz = 5 # batch size per GPU for scoring prompts
+        self.balance_class = False # whether to balance data examples sampled from each class
+    
+    def filter(self, entry): # data filter
         return True
 
-    def load_data_split(self, dataset,  split='train'):
-        data_split=list(dataset[split])
-        return [entry for entry in data_split if self.filter(entry)]
-    
-    def get_template(self, entry):
-        templates=[p[0] for p in self.get_templates()]
-        
-        # fix the random seed as the entry id for reproduction
-        random.seed(entry['id'])
-        template=random.choice(templates) 
-        
+    def load_data_split(self, dataset, ds_size=None, split="train"):
+        assert split in ["train", 'validation', 'test']
+        if split in ["test", "validation"]:
+            assert ds_size == None, "should not split test/valid set"
+        if ds_size == None or ds_size == "None":
+            data_split = list(dataset[split])
+            return [entry for entry in data_split if self.filter(entry)]
+        data = dataset[split]
+        data = list(data.shuffle(seed=42))
+        data = [entry for entry in data if self.filter(entry)]
+        if self.balance_class:  # balance data examples sampled from each class
+            counts = [0] * self.class_num
+            num_each_class = ds_size // self.class_num
+            x = []
+            for entry in tqdm.tqdm(data):
+                if len(x) >= ds_size:
+                    break
+                label = self.get_label(entry)
+                if counts[label] >= num_each_class:
+                    continue
+                counts[label] += 1
+                x.append(entry)
+        else:
+            x = data[:ds_size]
+        return x
+
+    def get_template(self, entry, return_answer = False):
+        '''
+        random sample a template for each entry
+        '''
+        if return_answer:
+            templates = [p[1] for p in self.get_templates()]
+        else:
+            templates = [p[0] for p in self.get_templates()]
+        random.seed(entry["id"]) # fix random seed for reproduction
+        template = random.choice(templates)
         return template
+
 
 task_map = App()
 
-#==================Natural Language Inference========================
+# ==================Natural Language Inference========================
 @task_map.add("mnli")
 class Mnli(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=3
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset = load_dataset('glue','mnli',cache_dir=cache_dir)
-        print('########load_dataset####### mnli')
-        if split=='train':
-            return self.load_data_split(dataset, split=split)
-        else:
-            raise Exception('Please switch to mnli_matched/mis_matched for mnli validation sets')
+        self.class_num = 3
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "nli"
 
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "mnli", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            raise Exception(
+                "Please switch to mnli_matched/mis_matched for mnli validation sets"
+            )
+        
     def get_templates(self):
         return [
                 ("Premise: \"{premise}\" Hypothesis: \"{hypothesis}\" Does the premise entail the hypothesis? Yes, No, or Maybe?", "{answer}"),
@@ -97,70 +157,75 @@ class Mnli(BaseTask):
                 ("If \"{premise}\", can we conclude that \"{hypothesis}\"? Yes, No, or Maybe?", "{answer}"),
                 ("\"{premise}\" Does it follow that \"{hypothesis}\"? Yes, No, or Maybe?", "{answer}"),
             ]
+ 
+    def get_question(self, entry):
+        premise = entry["premise"]
+        hypothesis = entry["hypothesis"]
+        template = self.get_template(entry)
+        return template.replace("{premise}", premise).replace("{hypothesis}", hypothesis)
 
-    def get_question(self,entry):
-        premise=entry['premise']
-        hypothesis= entry['hypothesis']
-        template=self.get_template(entry)
-        return template.replace('{premise}',premise).replace('{hypothesis}',hypothesis)
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num 
+    def get_answers(self, entry):
+        answers = [" Yes", " Maybe", " No"]
+        return answers
 
-    def get_answers(self,entry):
-        answers= ['Yes','Maybe','No']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("mnli_m")
 class Mnli_m(Mnli):
     def __init__(self):
         super().__init__()
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset = load_dataset('glue','mnli_matched',cache_dir=cache_dir)
-        if split=='train':
-            raise Exception('Please switch to mnli for mnli training sets')
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "mnli_matched", cache_dir=cache_dir)
+        if split == "train":
+            raise Exception("Please switch to mnli for mnli training sets")
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
+
 
 @task_map.add("mnli_mm")
 class Mnli_mm(Mnli):
     def __init__(self):
         super().__init__()
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset = load_dataset('glue','mnli_mismatched',cache_dir=cache_dir)
-        if split=='train':
-            raise Exception('Please switch to mnli for mnli training sets')
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "mnli_mismatched", cache_dir=cache_dir)
+        if split == "train":
+            raise Exception("Please switch to mnli for mnli training sets")
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
+
 
 @task_map.add("qnli")
 class Qnli(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('glue', 'qnli',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "nli"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "qnli", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -175,43 +240,46 @@ class Qnli(BaseTask):
                 ("Question: {question} Is \"{sentence}\" the correct answer?", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        question=entry['question']
-        sentence= entry['sentence']
-        template=self.get_template(entry)
-        return template.replace('{question}',question).replace('{sentence}',sentence)
+    def get_question(self, entry):
+        question = entry["question"]
+        sentence = entry["sentence"]
+        template = self.get_template(entry)
+        return template.replace("{question}", question).replace("{sentence}", sentence)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num 
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers= ['Yes','No']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" Yes", " No"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("rte")
 class Rte(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=3
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('super_glue','rte',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 3
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "nli"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("super_glue", "rte", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -226,51 +294,56 @@ class Rte(BaseTask):
                 ("Determine if the sentence is true based on the text below: {hypothesis} {premise} Yes, No, or Maybe?", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        premise=entry['premise']
-        hypothesis= entry['hypothesis']
-        template=self.get_template(entry)
-        return template.replace('{premise}',premise).replace('{hypothesis}',hypothesis) 
+    def get_question(self, entry):
+        premise = entry["premise"]
+        hypothesis = entry["hypothesis"]
+        template = self.get_template(entry)
+        return template.replace("{premise}", premise).replace(
+            "{hypothesis}", hypothesis
+        )
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers= ['Yes','Maybe','No']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" Yes", " Maybe", " No"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-# define your task class
-@task_map.add("snli") # add your task to the task map
-class Snli(BaseTask): 
+# define your multiple-choice task
+@task_map.add("snli")
+class Snli(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=3 # number of options in each question, if the number is not fixed, set it as None.
-        self.metric='simple_accuracy' # metric for evaluation
+        self.class_num = 3 # number of class
+        self.metric = "simple_accuracy" # metric name, should be the same as in `./src/utils/metric.py``
+        self.balance_class = True # whether to balance number of data examples sampled from each class
+        self.cluster = "nli" # task cluster name, should be the same as in the task map at the top of this file
 
     # filter to remove some unexpected data samples, 
-    # if nothing to be removed, just delete this function    
-    def filter(self,entry):
-        return int(entry["label"])>=0
-    
+    # if nothing to be removed, just delete this function
+    def filter(self, entry):
+        return int(entry["label"]) >= 0
+
     # get dataset splits
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('snli',cache_dir=cache_dir)
-        if split=='train': #the split for training the retriever
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("snli", cache_dir=cache_dir) # automatically download datasets into the `cache_dir`
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            # load validation/test split for evaluation
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='test' # the split for evaluation, we use 'test' when available, falling back to 'vaidation' otherwise.
-            return self.load_data_split(dataset, split=split)
-    
+
     # define task templates to transfer the datasets to instructions, 
     # we use the same templates with FLAN: https://github.com/google-research/FLAN/blob/main/flan/templates.py
     # Remove the newline character and option suffices for better prompting performance.
@@ -288,48 +361,51 @@ class Snli(BaseTask):
             ]
 
     # random_sample one template to convert the task input to an instruction
-    def get_question(self,entry):
-        premise=entry['premise']
-        hypothesis= entry['hypothesis']
-        template=self.get_template(entry)
-        return template.replace('{premise}',premise).replace('{hypothesis}',hypothesis)
+    def get_question(self, entry): 
+        premise = entry["premise"]
+        hypothesis = entry["hypothesis"]
+        template = self.get_template(entry)
+        return template.replace("{premise}", premise).replace("{hypothesis}", hypothesis)
 
-    # define input strs for inference
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    # wrap questions as a list for scoring/inference
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    # define options to be choosen from
-    def get_answers(self,entry):
-        answers= ['Yes','Maybe','No']
-        return answers 
-    
-    # define label
-    def get_label(self,entry):
-        label=int(entry['label'])
+    # get all candidate options
+    def get_answers(self, entry):
+        answers = [" Yes", " Maybe", " No"]
+        return answers
+
+    # get index of the gold option
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    # get the label completion
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    # get gold option string
+    def get_answer(self, entry): 
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-#==============================Reading Comprehension================================
+
+# ==============================Reading Comprehension================================
 @task_map.add("boolq")
 class Boolq(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('super_glue','boolq',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "reading"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("super_glue", "boolq", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -345,43 +421,46 @@ class Boolq(BaseTask):
                 ("Is it true that {question} based on the following text? {text}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        text=entry['passage']
-        question=entry['question']
-        template=self.get_template(entry)
-        return template.replace('{text}',text).replace('{question}',question)
+    def get_question(self, entry):
+        text = entry["passage"]
+        question = entry["question"]
+        template = self.get_template(entry)
+        return template.replace("{text}", text).replace("{question}", question)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=['No','Yes'] 
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
 @task_map.add("multirc")
 class Multirc(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='f1'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('super_glue','multirc',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "f1"
+        self.balance_class = True
+        self.cluster = "reading"
+        self.run_scorer_bsz = 1 # set the bsz a smaller value when the input text is too long
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("super_glue", "multirc", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -395,44 +474,48 @@ class Multirc(BaseTask):
                 ("{paragraph} Question: \"{question}\" Answer: \"{response}\" Is this answer to the question correct?", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        paragraph=entry['paragraph']
-        question=entry['question']
-        response=entry['answer']
-        template=self.get_template(entry)
-        return template.replace('{paragraph}',paragraph).replace('{question}',question).replace('{response}',response)
+    def get_question(self, entry):
+        paragraph = entry["paragraph"]
+        question = entry["question"]
+        response = entry["answer"]
+        template = self.get_template(entry)
+        return template.replace("{paragraph}", paragraph).replace("{question}", question).replace("{response}", response)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=['No','Yes'] 
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("openbookqa")
 class Openbookqa(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=4
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('openbookqa','additional',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 4
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "reading"
+        self.finder_L = 200
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("openbookqa", "additional", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -445,43 +528,50 @@ class Openbookqa(BaseTask):
                 ("Use this fact to answer the question: {fact} {question}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        fact=entry['fact1']
-        question=entry['question_stem']
-        template=self.get_template(entry)
-        return template.replace('{fact}',fact).replace('{question}',question)
+    def get_question(self, entry):
+        fact = entry["fact1"]
+        question = entry["question_stem"]
+        template = self.get_template(entry)
+        return template.replace("{fact}", fact).replace("{question}", question)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=entry['choices']['text']
-        return answers 
-    
-    def get_label(self,entry):
-        answerKey=entry['answerKey']
-        label={"A":0,"B":1,"C":2,"D":3}[answerKey]
+    def get_answers(self, entry):
+        answers = [' '+answer for answer in entry["choices"]["text"]]
+        return answers
+
+    def get_label(self, entry):
+        answerKey = entry["answerKey"]
+        label = {"A": 0, "B": 1, "C": 2, "D": 3}[answerKey]
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("squad_v1")
 class Squad_v1(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1 # the number of options of text completion is always set as 1.
-        self.metric='squad'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('squad',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
+        self.class_num = 1 # the number of options of text completion is always set as 1.
+        self.metric = "squad"
+        self.balance_class = False
+        self.cluster = "reading"
+
+        # set the number of prompts a larger value for difficult question, 
+        # ensure we could find a least one prompt scoring than 0 in the sampled prompts
+        self.finder_L = 100
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("squad", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
             return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
@@ -496,47 +586,57 @@ class Squad_v1(BaseTask):
                 ("{title} {context} Q: {question}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        title=re.sub(r'_',' ',entry['title'])
-        context=entry['context']
-        question=entry['question']
-        template=self.get_template(entry)
-        return template.replace('{context}',context).replace('{question}',question).replace('{title}',title)
+    def get_question(self, entry):
+        title = re.sub(r"_", " ", entry["title"])
+        context = entry["context"]
+        question = entry["question"]
+        template = self.get_template(entry)
+        return (
+            template.replace("{context}", context)
+            .replace("{question}", question)
+            .replace("{title}", title)
+        )
 
     # wrap the input str as a list to align with multiple choice task
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text]
 
     # wrap the gold answer as a list to align with multiple choice task
-    def get_answers(self,entry):
-        answers=[entry['answers']['text'][0]] 
-        return answers 
-    
+    def get_answers(self, entry):
+        answers = [' '+entry["answers"]["text"][0]]
+        return answers
+
     # get label completion(s), the squad metric requires the label to be a list of string(s)
-    def get_label(self,entry):
-        label=entry['answers']['text']
+    # get_label is for caculating metric scores, so we need to return all label strings
+    def get_label(self, entry):
+        label = entry["answers"]["text"]
         return label
 
-    # get label completion, needs to return a string,
-    def get_answer(self,entry):
-        return entry['answers']['text'][0]
+    # get_answer function is for constructing demonstration in the prompt pool,
+    # return a string
+    def get_answer(self, entry):
+        return ' '+entry["answers"]["text"][0]
 
-#===================================Commonsense Reasoning===============================
+
+# ===================================Commonsense Reasoning===============================
 @task_map.add("copa")
 class Copa(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('super_glue','copa',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else: 
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "common_reason"
+        self.finder_L = 200
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("super_glue", "copa", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -550,43 +650,45 @@ class Copa(BaseTask):
                 ("Answer the following question about this sentence: \"{premise}\" What is the {question}?", "{answer}"),
              ]
 
-    def get_question(self,entry):
-        question=entry['question']
-        premise=entry['premise']
-        template=self.get_template(entry)
-        return template.replace('{question}',question).replace('{premise}',premise)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        question = entry["question"]
+        premise = entry["premise"]
+        template = self.get_template(entry)
+        return template.replace("{question}", question).replace("{premise}", premise)
 
-    def get_answers(self,entry):
-        answers=[entry['choice1'], entry['choice2']]
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers = [' '+entry["choice1"], ' '+entry["choice2"]]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
 @task_map.add("hellaswag")
 class Hellaswag(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=4
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset = load_dataset('hellaswag',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 4
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "common_reason"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("hellaswag", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -602,46 +704,49 @@ class Hellaswag(BaseTask):
                 ("Write the next sentence in the following story. {context}", "{answer}"),
             ]
 
-    def get_question(self,entry):
+    def get_question(self, entry):
         # Model will likely have a hard time producing a string with brackets.
-        #context=re.sub(r'\[header\]\s', '', entry['ctx'])
-        context=re.sub(r'\[.*?\]\s', '', entry['ctx'])
-        template=self.get_template(entry)
-        return template.replace('{context}',context)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+        # context=re.sub(r'\[header\]\s', '', entry['ctx'])
+        context = re.sub(r"\[.*?\]\s", "", entry["ctx"])
+        template = self.get_template(entry)
+        return template.replace("{context}", context)
 
-    def get_answers(self,entry):
-        answers=[]
-        for answer in entry['endings']:
-            answers.append(re.sub(r'\[.*?\]\s', '', answer))
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers = []
+        for answer in entry["endings"]:
+            answers.append(re.sub(r"\[.*?\]\s", "", answer))
+        return [' '+ answer for answer in answers]
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("piqa")
 class Piqa(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('piqa',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "common_reason"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("piqa", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -655,96 +760,102 @@ class Piqa(BaseTask):
                 ("How would someone go about accomplishing this goal? \"{goal}\"", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        goal=entry['goal']
-        template=self.get_template(entry)
-        return template.replace('{goal}',goal)
+    def get_question(self, entry):
+        goal = entry["goal"]
+        template = self.get_template(entry)
+        return template.replace("{goal}", goal)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers= [entry['sol1'], entry['sol2']]
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [' '+entry["sol1"], ' '+entry["sol2"]]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-#================================Sentiment Analysis=============================
+
+# ================================Sentiment Analysis=============================
 @task_map.add("sentiment140")
 class Sentiment140(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2 
+        self.class_num = 2
         # Prior work uses two classes
         # (https://www.aclweb.org/anthology/C14-1008.pdf,
         # https://arxiv.org/pdf/1404.2188.pdf)
-        self.metric='simple_accuracy'
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "sentiment"
 
-    def filter(self,entry):
-        return int(entry['sentiment']) in [0,4] 
+    def filter(self, entry):
+        return int(entry["sentiment"]) in [0, 4] # Prior work uses two classes
 
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('sentiment140',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("sentiment140", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
-                ("{text} What is the sentiment of this tweet?", "{answer}"),
-                ("{text} How would the sentiment of this tweet be described?", "{answer}"),
-                ("{text} Describe the sentiment embodied by this tweet.", "{answer}"),
-                ("Tweet: {text} Predict the sentiment of this tweet.", "{answer}"),
-                ("What is the sentiment of the following tweet? Tweet:{text}", "{answer}"),
-                ("How would one describe the sentiment of this tweet? {text}", "{answer}"),
-            ]
+            ("{text} What is the sentiment of this tweet?", "{answer}"),
+            ("{text} How would the sentiment of this tweet be described?", "{answer}"),
+            ("{text} Describe the sentiment embodied by this tweet.", "{answer}"),
+            ("Tweet: {text} Predict the sentiment of this tweet.", "{answer}"),
+            ("What is the sentiment of the following tweet? Tweet:{text}", "{answer}"),
+            ("How would one describe the sentiment of this tweet? {text}", "{answer}"),
+        ]
 
-    def get_question(self,entry):
-        text=entry['text']
-        template=self.get_template(entry)
-        return template.replace('{text}',text)
+    def get_question(self, entry):
+        text = entry["text"]
+        template = self.get_template(entry)
+        return template.replace("{text}", text)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers= ['Negative','Positive']
-        return answers 
-    
-    def get_label(self,entry):
-        label=0 if int(entry['sentiment'])==0 else 1
+    def get_answers(self, entry):
+        answers = [" Negative", " Positive"]
+        return answers
+
+    def get_label(self, entry):
+        label = 0 if int(entry["sentiment"]) == 0 else 1
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("sst2")
 class Sst2(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('sst2',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "sentiment"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("sst2", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -758,48 +869,52 @@ class Sst2(BaseTask):
                 ("Does the following review have a positive or negative opinion of the movie? \"{sentence}\"", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        sentence=entry['sentence']
-        template=self.get_template(entry)
-        return template.replace('{sentence}',sentence)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        sentence = entry["sentence"]
+        template = self.get_template(entry)
+        return template.replace("{sentence}", sentence)
 
-    def get_answers(self,entry):
-        answers= ['Negative','Positive']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers = [" Negative", " Positive"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("yelp")
 class Yelp(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def filter(self,entry):
-        text=entry['text']
-        text=re.sub(r'\\\"','',text)
-        text=re.sub(r'\\n\\n', ' ',text)
-        return len(text)>0 and len(text.split(" "))<=256 
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('yelp_polarity',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "sentiment"
+
+    def filter(self, entry):
+        text = entry["text"]
+        text = re.sub(r"\\\"", "", text)
+        text = re.sub(r"\\n\\n", " ", text)
+        # filter out texts longer than 256
+        return len(text) > 0 and len(text.split(" ")) <= 256
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("yelp_polarity", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -810,54 +925,54 @@ class Yelp(BaseTask):
                 ("Is the following review positive or negative? {text}", "{answer}"),
                 ("What is the sentiment of the following review? {text}", "{answer}"),
                 ("How might one describe the sentiment of this review? {text}", "{answer}"),
-                ("Write a {answer} yelp review.", "{text}"),
-                ("Generate a {answer} review for a place.", "{text}"),
-                ("What would be an example of an {answer} review?", "{text}"),
             ]
 
-    def get_question(self,entry):
-        text=entry['text']
-        text=re.sub(r'\\\"','',text)
-        text=re.sub(r'\\n\\n', ' ',text)
-        template=self.get_template(entry)
-        return template.replace('{text}',text)
+    def get_question(self, entry):
+        text = entry["text"]
+        text = re.sub(r"\\\"", "", text)
+        text = re.sub(r"\\n\\n", " ", text)
+        template = self.get_template(entry)
+        return template.replace("{text}", text)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers = ['Negative','Positive']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" Negative", " Positive"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-#=============================closedbook_qa====================================
+
+# =============================closedbook_qa====================================
 @task_map.add("arc_c")
 class Arc_c(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=4 
-        self.metric='simple_accuracy'
-    
-    def filter(self,entry):
-        return len(entry['choices']['text'])==4
+        self.class_num = 4
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.finder_L = 400
+        self.cluster = "close_qa"
 
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('ai2_arc','ARC-Challenge',cache_dir=cache_dir)
-        print('########load_dataset####### ARC-Challenge')
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else: 
-            split='test'
-            return self.load_data_split(dataset,split=split)
+    def filter(self, entry):
+        return len(entry["choices"]["text"]) == 4
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("ai2_arc", "ARC-Challenge", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -870,111 +985,118 @@ class Arc_c(BaseTask):
                 ("{question} Pick the answer from these options.", "{answer}"),
              ]
 
-    def get_question(self,entry):
-        question=entry['question']
-        template=self.get_template(entry)
-        return template.replace('{question}',question)
+    def get_question(self, entry):
+        question = entry["question"]
+        template = self.get_template(entry)
+        return template.replace("{question}", question)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        assert len(entry["choices"]["text"])==4
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        assert len(entry["choices"]["text"]) == 4
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers= entry["choices"]["text"]
-        return answers 
-    
-    def get_label(self,entry):
+    def get_answers(self, entry):
+        answers = [" " + answer for answer in entry["choices"]["text"]]
+        return answers
+
+    def get_label(self, entry):
         # NOTE: Some `entry["answerKey"]`s are in numeric string format being one
         # of {'1', '2', '3', '4'}. We map them back to letters.
         num_to_letter = {"1": "A", "2": "B", "3": "C", "4": "D"}
         entry["answerKey"] = num_to_letter.get(entry["answerKey"], entry["answerKey"])
-        label=["A", "B", "C", "D"].index(entry["answerKey"])
+        label = ["A", "B", "C", "D"].index(entry["answerKey"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("arc_e")
 class Arc_e(Arc_c):
     def __init__(self):
         super().__init__()
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('ai2_arc','ARC-Easy',cache_dir=cache_dir)
-        print('########load_dataset####### ARC-Easy')
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else: 
-            split='test'
-            return self.load_data_split(dataset,split=split)
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("ai2_arc", "ARC-Easy", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
 
 @task_map.add("natural_questions")
 class Natural_questions(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='trivia_qa'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('nq_open',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 1
+        self.metric = "trivia_qa"
+        self.balance_class = False
+        self.cluster = "close_qa"
+        self.run_scorer_bsz = 20
+        self.finder_L = 400
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("nq_open", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
-                ("Question: {question} Answer:", "{answer}"),
-                ("{question}", "{answer}"),
-                ("Answer the following question: {question}", "{answer}"),
-                ("Answer this question: {question}", "{answer}"),
-                ("Please answer this question: {question}", "{answer}"),
-                ("Answer the question...{question}", "{answer}"),
-                ("What is the answer to this question? {question}", "{answer}"),
-                ("Can you tell me the answer to {question}", "{answer}"),
-                ("Next question: {question}", "{answer}"),
-                ("Q: {question} A:", "{answer}"),
-            ]
+            ("Question: {question} Answer:", "{answer}"),
+            ("{question}", "{answer}"),
+            ("Answer the following question: {question}", "{answer}"),
+            ("Answer this question: {question}", "{answer}"),
+            ("Please answer this question: {question}", "{answer}"),
+            ("Answer the question...{question}", "{answer}"),
+            ("What is the answer to this question? {question}", "{answer}"),
+            ("Can you tell me the answer to {question}", "{answer}"),
+            ("Next question: {question}", "{answer}"),
+            ("Q: {question} A:", "{answer}"),
+        ]
 
-    def get_question(self,entry):
-        question=entry['question'] + '?'
-        template=self.get_template(entry)
-        return template.replace('{question}',question)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        question = entry["question"] + "?"
+        template = self.get_template(entry)
+        return template.replace("{question}", question)
 
-    def get_answers(self,entry):
-        answers= entry['answer']
-        return answers 
-    
-    def get_label(self,entry):
-        label=entry['answer']
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers =[" " + answer for answer in entry["answer"]]
+        return answers
+
+    def get_label(self, entry):
+        label = entry["answer"]
         return label
-    
-    def get_answer(self,entry):
-        return entry['answer'][0]
 
-#======================================paraphrase================================
+    def get_answer(self, entry):
+        return ' '+entry["answer"][0]
+
+# ======================================paraphrase================================
 @task_map.add("mrpc")
 class Mrpc(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='acc_and_f1'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('glue','mrpc',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation' 
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "acc_and_f1"
+        self.balance_class = True
+        self.cluster = "paraphrase"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "mrpc", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -990,43 +1112,46 @@ class Mrpc(BaseTask):
                 ("Do these sentences have the same meaning? {sentence1} {sentence2}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        sentence1=entry['sentence1']
-        sentence2=entry['sentence2']
-        template=self.get_template(entry)
-        return template.replace('{sentence1}',sentence1).replace('{sentence2}',sentence2)
+    def get_question(self, entry):
+        sentence1 = entry["sentence1"]
+        sentence2 = entry["sentence2"]
+        template = self.get_template(entry)
+        return template.replace("{sentence1}", sentence1).replace("{sentence2}", sentence2)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=['No','Yes']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry) 
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("qqp")
 class Qqp(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='acc_and_f1'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('glue','qqp',cache_dir=cache_dir)
-        if split=='train':
-            return self.load_data_split(dataset,split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "acc_and_f1"
+        self.balance_class = True
+        self.cluster = "paraphrase"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("glue", "qqp", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -1042,43 +1167,46 @@ class Qqp(BaseTask):
                 ("Do these questions have the same meaning? {question1} {question2}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        question1=entry['question1'].replace('""', '\'')
-        question2=entry['question2'].replace('""', '\'')
-        template=self.get_template(entry)
-        return template.replace('{question1}',question1).replace('{question2}',question2)
+    def get_question(self, entry):
+        question1 = entry["question1"].replace('""', "'")
+        question2 = entry["question2"].replace('""', "'")
+        template = self.get_template(entry)
+        return template.replace("{question1}", question1).replace("{question2}", question2)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=['No','Yes']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("paws")
 class Paws(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('paws','labeled_final',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "paraphrase"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("paws", "labeled_final", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1094,44 +1222,47 @@ class Paws(BaseTask):
                 ("Please check if these have the same meaning. Answer \"yes\" if they do, otherwise \"no\". {sentence1} {sentence2}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        sentence1=entry['sentence1']
-        sentence2=entry['sentence2']
-        template=self.get_template(entry)
-        return template.replace('{sentence1}',sentence1).replace('{sentence2}',sentence2)
+    def get_question(self, entry):
+        sentence1 = entry["sentence1"]
+        sentence2 = entry["sentence2"]
+        template = self.get_template(entry)
+        return template.replace("{sentence1}", sentence1).replace("{sentence2}", sentence2)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry):
-        answers=['No','Yes']
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-#================================coreference resolution==================================
+
+# ================================coreference resolution==================================
 @task_map.add("wsc")
 class Wsc(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('super_glue','wsc', cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "coreference"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("super_glue", "wsc", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1147,44 +1278,47 @@ class Wsc(BaseTask):
                 ("Do \"{text1}\" and \"{text2}\" point to the same thing in the following sentence? {context}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        context = entry['text']
-        text1 = entry['span1_text']
-        text2 = entry['span2_text']
-        template=self.get_template(entry)
-        return template.replace('{context}',context).replace('{text1}',text1).replace('{text2}',text2)
+    def get_question(self, entry):
+        context = entry["text"]
+        text1 = entry["span1_text"]
+        text2 = entry["span2_text"]
+        template = self.get_template(entry)
+        return template.replace("{context}", context).replace("{text1}", text1).replace("{text2}", text2)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
 
-    def get_answers(self,entry): 
-        answers=['No','Yes']
+    def get_answers(self, entry):
+        answers = [" No", " Yes"]
         return answers
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("wsc273")
 class Wsc273(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('winograd_wsc','wsc273', cache_dir=cache_dir)
-        if split=='train':
-            raise Exception('wsc273 does not have any training set')
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "coreference"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("winograd_wsc", "wsc273", cache_dir=cache_dir)
+        if split == "train":
+            raise Exception("wsc273 does not have any training set")
+        else:  
+            split = "test"
+            return self.load_data_split(dataset, split=split)
 
     def get_templates(self):
         return [
@@ -1200,44 +1334,47 @@ class Wsc273(BaseTask):
                 ("Complete the rest of the sentence. {context}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        text_first = entry["text"][:entry["pronoun_loc"]]
-        context=text_first
-        template=self.get_template(entry)
-        return template.replace('{context}',context)
+    def get_question(self, entry):
+        text_first = entry["text"][: entry["pronoun_loc"]]
+        context = text_first
+        template = self.get_template(entry)
+        return template.replace("{context}", context)
 
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+entry["options"][0], text+entry["options"][1]]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text + entry["options"][0], text + entry["options"][1]]
 
-    def get_answers(self,entry): 
-        text_second = entry["text"][entry["pronoun_loc"]+len(entry["pronoun"]):]
+    def get_answers(self, entry):
+        text_second = entry["text"][entry["pronoun_loc"] + len(entry["pronoun"]):]
         return [text_second] * self.class_num
-    
-    def get_label(self,entry):
-        label=int(entry['label'])
+
+    def get_label(self, entry):
+        label = int(entry["label"])
         return label
-    
-    def get_answer(self,entry): 
-        text_second = entry["text"][entry["pronoun_loc"]+len(entry["pronoun"]):]
-        answers = [entry["options"][0]+text_second, entry["options"][1]+text_second]
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):  
+        text_second = entry["text"][entry["pronoun_loc"] + len(entry["pronoun"]):]
+        answers = [entry["options"][0] + text_second, entry["options"][1] + text_second]
+        label = self.get_label(entry)
         return answers[label]
+
 
 @task_map.add("winogrande")
 class Winogrande(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=2
-        self.metric='simple_accuracy'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('winogrande','winogrande_xl',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 2
+        self.metric = "simple_accuracy"
+        self.balance_class = False
+        self.cluster = "coreference"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("winogrande", "winogrande_xl", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1253,49 +1390,53 @@ class Winogrande(BaseTask):
                 ("Continue writing the following text. {context}", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        cut_index = entry["sentence"].index('_')
-        context = entry["sentence"][:cut_index] 
-        template=self.get_template(entry)
-        return template.replace('{context}',context)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+entry["option1"], text+entry["option2"]]
+    def get_question(self, entry):
+        cut_index = entry["sentence"].index("_")
+        context = entry["sentence"][:cut_index]
+        template = self.get_template(entry)
+        return template.replace("{context}", context)
 
-    def get_answers(self,entry): 
-        cut_index = entry["sentence"].index('_')
-        text_second = entry["sentence"][cut_index+1:]
-        answers= [text_second]*self.class_num
-        return answers 
-    
-    def get_label(self,entry):
-        label=int(entry['answer'])-1
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text + entry["option1"], text + entry["option2"]]
+
+    def get_answers(self, entry):
+        cut_index = entry["sentence"].index("_")
+        text_second = entry["sentence"][cut_index + 1 :]
+        answers = [text_second] * self.class_num
+        return answers
+
+    def get_label(self, entry):
+        label = int(entry["answer"]) - 1
         return label
-    
-    def get_answer(self,entry): 
-        cut_index = entry["sentence"].index('_')
-        text_second = entry["sentence"][cut_index+1:]
-        answers= [entry["option1"]+text_second, entry["option2"]+text_second ]
-        label= self.get_label(entry)
+
+    def get_answer(self, entry):
+        cut_index = entry["sentence"].index("_")
+        text_second = entry["sentence"][cut_index + 1 :]
+        answers = [entry["option1"] + text_second, entry["option2"] + text_second]
+        label = self.get_label(entry)
         return answers[label]
 
 
-#===============================Struct-to-Text=======================
+# ===============================Struct-to-Text=======================
 @task_map.add("common_gen")
 class Common_gen(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='rouge'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('common_gen',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 1
+        self.metric = "rouge"
+        self.balance_class = False
+        self.cluster = "struct2text"
+        self.finder_L = 100
+        self.run_scorer_bsz = 10
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("common_gen", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1307,42 +1448,42 @@ class Common_gen(BaseTask):
                 ("Generate a sentence that includes all the following words: {concepts}.", "{target}"),
             ]
 
-    def get_question(self,entry):
+    def get_question(self, entry):
         concepts = ", ".join(entry["concepts"])
-        template=self.get_template(entry)
-        return template.replace('{concepts}',concepts)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']
+        template = self.get_template(entry)
+        return template.replace("{concepts}", concepts)
 
-    def get_answers(self,entry):
-        answers=[entry['target']]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text]
+
+    def get_answers(self, entry):
+        answers = [" "+entry["target"]]
         return answers
 
-    def get_label(self,entry):
-        return entry['target']
-    
-    def get_answer(self,entry): 
-        return entry['target']
+    def get_label(self, entry):
+        return entry["target"]
+
+    def get_answer(self, entry):  
+        return " "+entry["target"]
+
 
 @task_map.add("dart")
 class Dart(BaseTask):
-    '''
-    https://huggingface.co/datasets/GEM/dart
-    '''
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='rouge'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('GEM/dart',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 1
+        self.metric = "rouge"
+        self.balance_class = False
+        self.cluster = "struct2text"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("GEM/dart", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "validation"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='validation'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1356,41 +1497,44 @@ class Dart(BaseTask):
                 ("Produce a long descriptive sentence that uses all these words: {tripleset}", "{target}"),
             ]
 
-    def get_question(self,entry):
+    def get_question(self, entry):
         tripleset = "; ".join([", ".join(triplet) for triplet in entry["tripleset"]])
         # Get rid of some undesirable cells like "[TABLECONTEXT]", "[TITLE]"
-        tripleset = re.sub(r'\[(.*?)\]', '',tripleset)
-        template=self.get_template(entry)
-        return template.replace('{tripleset}',tripleset)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']
+        tripleset = re.sub(r"\[(.*?)\]", "", tripleset)
+        template = self.get_template(entry)
+        return template.replace("{tripleset}", tripleset)
 
-    def get_answers(self,entry):
-        answers=[entry['target']]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text]
+
+    def get_answers(self, entry):
+        answers = [" " + entry["target"]]
         return answers
 
-    def get_label(self,entry):
-        return entry['target']
-    
-    def get_answer(self,entry): 
-        return entry['target']
+    def get_label(self, entry):
+        return entry["target"]
+
+    def get_answer(self, entry):
+        return " "+entry["target"]
+
 
 @task_map.add("e2e_nlg")
 class E2e_nlg(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='rouge'
-        
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('GEM/e2e_nlg',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 1
+        self.metric = "rouge"
+        self.balance_class = False
+        self.cluster = "struct2text"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("GEM/e2e_nlg", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else:
-            split='test'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1406,41 +1550,44 @@ class E2e_nlg(BaseTask):
                 ("Generate a descriptive sentence about a restaurant using the following words: {meaning_representation}.", "{target}"),
             ]
 
-    def get_question(self,entry):
-        meaning_representation = re.sub(r'\[', ' = ', entry['meaning_representation'])
-        meaning_representation = re.sub(r'\]', '', meaning_representation)
-        template=self.get_template(entry)
-        return template.replace('{meaning_representation}',meaning_representation)
-    
-    def get_input_strs(self,entry):
-        text = self.get_question(entry)
-        return [text+' ']
+    def get_question(self, entry):
+        meaning_representation = re.sub(r"\[", " = ", entry["meaning_representation"])
+        meaning_representation = re.sub(r"\]", "", meaning_representation)
+        template = self.get_template(entry)
+        return template.replace("{meaning_representation}", meaning_representation)
 
-    def get_answers(self,entry):
-        answers=[entry['target']]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text]
+
+    def get_answers(self, entry):
+        answers = [" " + entry["target"]]
         return answers
 
-    def get_label(self,entry):
-        return entry['target']
-    
-    def get_answer(self,entry): 
-        return entry['target']
+    def get_label(self, entry):
+        return entry["target"]
 
-#===============================Summarization============================
-@task_map.add("ag_news")  
+    def get_answer(self, entry):
+        return " " + entry["target"]
+
+
+# ===============================Summarization============================
+@task_map.add("ag_news")
 class Ag_news(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=4
-        self.metric='simple_accuracy'
-    
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('ag_news',cache_dir=cache_dir)
-        if split=='train':
+        self.class_num = 4
+        self.metric = "simple_accuracy"
+        self.balance_class = True
+        self.cluster = "summarize"
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("ag_news", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else: 
-            split='test'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1454,48 +1601,58 @@ class Ag_news(BaseTask):
                 ("Select the topic that this about: \"{text}\" World, Sports, Business, or Technology?", "{answer}"),
             ]
 
-    def get_question(self,entry):
-        text=entry['text']
-        template=self.get_template(entry)
-        return template.replace('{text}',text) 
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        text = entry["text"]
+        template = self.get_template(entry)
+        return template.replace("{text}", text)
 
-    def get_answers(self,entry):
-        answers= ['World','Sports','Business','Technology']
-        return answers 
-    
-    def get_label(self,entry):
-        return int(entry['label'])
-    
-    def get_answer(self,entry):
-        answers= self.get_answers(entry)
-        label= self.get_label(entry)
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers = [" World", " Sports", " Business", " Technology"]
+        return answers
+
+    def get_label(self, entry):
+        return int(entry["label"])
+
+    def get_answer(self, entry):
+        answers = self.get_answers(entry)
+        label = self.get_label(entry)
         return answers[label]
 
-@task_map.add("aeslc")  
+
+@task_map.add("aeslc")
 class Aeslc(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='rouge'
-    
-    def filter(self,entry):
-        text=entry['email_body']
-        text=re.sub(r'\n', ' ',text)
-        answer=entry['subject_line']
-        answer=re.sub(r'\n', ' ',answer)
-        return len(text.split())>0 and len(answer.split())>0 and len(text.split())<=256 and len(answer.split())<=256
+        self.class_num = 1
+        self.metric = "rouge"
+        self.balance_class = False
+        self.cluster = "summarize"
+        self.run_scorer_bsz = 10
+        self.finder_L = 50
 
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('aeslc',cache_dir=cache_dir)
-        if split=='train':
+    def filter(self, entry):
+        text = entry["email_body"]
+        text = re.sub(r"\n", " ", text)
+        answer = entry["subject_line"]
+        answer = re.sub(r"\n", " ", answer)
+        return (
+            len(text.split()) > 0
+            and len(answer.split()) > 0
+            and len(text.split()) <= 256
+            and len(answer.split()) <= 256
+        )
+
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("aeslc", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else: 
-            split='test'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1509,46 +1666,51 @@ class Aeslc(BaseTask):
                 ("{body} Generate a subject line for this email.", "{subject}"),
             ]
 
-    def get_question(self,entry):
-        body=re.sub(r'\n',' ',entry['email_body'])
-        template=self.get_template(entry)
-        return template.replace('{body}',body)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        body = re.sub(r"\n", " ", entry["email_body"])
+        template = self.get_template(entry)
+        return template.replace("{body}", body)
 
-    def get_answers(self,entry):
-        subject=re.sub(r'\n','',entry['subject_line'])
-        answers= [subject]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        subject = re.sub(r"\n", "", entry["subject_line"])
+        answers = [" " + subject]
         return answers
-    
-    def get_label(self,entry):
-        return re.sub(r'\n','',entry['subject_line'])
-    
-    def get_answer(self,entry):
-        return re.sub(r'\n','',entry['subject_line'])
 
-@task_map.add("gigaword")  
+    def get_label(self, entry):
+        return re.sub(r"\n", "", entry["subject_line"])
+
+    def get_answer(self, entry):
+        return " " + re.sub(r"\n", "", entry["subject_line"])
+
+
+@task_map.add("gigaword")
 class Gigaword(BaseTask):
     def __init__(self):
         super().__init__()
-        self.class_num=1
-        self.metric='rouge'
-        
+        self.class_num = 1
+        self.metric = "rouge"
+        self.balance_class = False
+        self.cluster = "summarize"
+        self.run_scorer_bsz = 20
+        self.finder_L = 100
+
     def filter(self, entry):
-        text=''.join([entry['document'], entry['summary']])
-        no_unk='UNK' not in text
-        no_hashtag='#' not in text
+        text = "".join([entry["document"], entry["summary"]])
+        no_unk = "UNK" not in text
+        no_hashtag = "#" not in text
         return no_unk and no_hashtag
 
-    def get_dataset(self,split=None,cache_dir=None):
-        dataset=load_dataset('gigaword',cache_dir=cache_dir)
-        if split=='train':
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("gigaword", cache_dir=cache_dir)
+        if split == "train":
+            return self.load_data_split(dataset, ds_size=ds_size, split=split)
+        else:  
+            split = "test"
             return self.load_data_split(dataset, split=split)
-        else: 
-            split='test'
-            return self.load_data_split(dataset,split=split)
 
     def get_templates(self):
         return [
@@ -1562,21 +1724,102 @@ class Gigaword(BaseTask):
                 ("{text} Can you generate a short summary of the above paragraph?", "{summary}"),
             ]
 
-    def get_question(self,entry):
-        text=entry['document']
-        template=self.get_template(entry)
-        return template.replace('{text}',text)
-    
-    def get_input_strs(self,entry):
-        text=self.get_question(entry)
-        return [text+' ']*self.class_num
+    def get_question(self, entry):
+        text = entry["document"]
+        template = self.get_template(entry)
+        return template.replace("{text}", text)
 
-    def get_answers(self,entry):
-        answers= [entry['summary']]
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text] * self.class_num
+
+    def get_answers(self, entry):
+        answers = [" " + entry["summary"]]
         return answers
-    
-    def get_label(self,entry):
-        return entry['summary']
-    
-    def get_answer(self,entry):
-        return entry['summary']
+
+    def get_label(self, entry):
+        return entry["summary"]
+
+    def get_answer(self, entry):
+        return " " + entry["summary"]
+
+# ========================== Exploration Example: Chain-of-Thought Prompting ========================
+# define your cot prompting task
+@task_map.add("pubmed_qa")
+class Pubmed_qa(BaseTask):
+    def __init__(self):
+        super().__init__()
+        self.class_num = 1 # we regard cot as a text completion task
+        self.metric = "pubmed_qa_acc"
+        self.cluster = "reading"
+
+    # get dataset splits
+    def get_dataset(self, split=None, ds_size=None, cache_dir=None):
+        dataset = load_dataset("pubmed_qa", 'pqa_labeled', cache_dir=cache_dir)
+        # pubmed_qa has no validation splits, we create our own random evaluations splits
+        split_ratio = 0.8
+        data = list(dataset['train'].shuffle(seed=42))
+        if split == "train":
+            return data[:int(len(data)*split_ratio)]
+        else:  
+            return data[int(len(data)*split_ratio):]
+
+    # define cot task templates to transfer the datasets to instructions, 
+    # we use the templates of `synth_cot_cosmos_qa` in FLANv2: https://github.com/google-research/FLAN/blob/main/flan/v2/templates.py
+    # Remove the newline character for better prompting performance (especially for small LLMs)
+    def get_templates(self):
+        return [
+            ("{context} Question: {question} Yes, No, or Maybe? Let's answer step by step.", "{cot} So the answer is {answer}"),
+            ("{context} Q: {question} Yes, No, or Maybe? Step by step reasoning:", "{cot} The answer is {answer}"),
+            ("{context} Let's answer this carefully: {question} Yes, No, or Maybe?", "{cot} The answer is {answer}"),
+            ("{context} Based on the preceding passage, answer question {question} Yes, No, or Maybe? Let's solve slowly:", "{cot} The answer is {answer}"),
+            ("{context} Solve the following question thinking out loud: {question} Yes, No, or Maybe?", "{cot} So, the answer is {answer}"),
+            ("Context: {context} Question: {question} Yes, No, or Maybe? Let's think:", "{cot}... So the answer is {answer}"),
+            ("Read the following article and answer the question. {context} {question} Yes, No, or Maybe? ... Chain-of-thought:", "{cot} The answer is {answer}"),
+            ("Answer the question about text: {context} {question} Yes, No, or Maybe? CoT:", "{cot} The answer is {answer}"),
+            ("{context} Question: {question} Yes, No, or Maybe? Chain-of-thought:", "{cot} The answer is {answer}"),
+            ("Context: {context} Q: {question} Yes, No, or Maybe? Step-by-step reasoning process:", "{cot} The answer is {answer}"),
+            ]
+
+    # random_sample one template to convert the task input to an instruction
+    def get_question(self, entry):
+        question = entry["question"]
+        meta_context = entry["context"]
+        contexts=[]
+        for i, label in enumerate(meta_context["labels"]):
+            content = meta_context["contexts"][i]
+            sub_title = label[0]+label[1:].lower()
+            contexts.append(f'({sub_title}) {content}')
+        context = '\n'.join(contexts)
+        question_template = self.get_template(entry, return_answer=False)
+        return question_template.replace("{context}", context).replace("{question}", question)
+
+    # wrap the question as a list for scoring/inference, align with mutiple choice task
+    def get_input_strs(self, entry):
+        text = self.get_question(entry)
+        return [text]
+
+    # wrap answer as a list for scoring/inference
+    def get_answers(self, entry):
+        cot = entry["long_answer"]
+        answer = entry["final_decision"]
+
+        # we fix the random seed as the entry["id"] when sampling the question and answer templates,
+        # thus the question and answer templates always correspond to each other
+        answer_template = self.get_template(entry, return_answer=True)
+        answer_template = answer_template.replace('{cot}', cot).replace('{answer}', answer)
+        answers = [' ' + answer_template]
+        return answers
+
+    # get label completion(s) for calculating cot acc
+    def get_label(self, entry):
+        label = entry["final_decision"]
+        return label
+
+    # the get_answer function is for constructing demonstration in the prompt pool, we return a string
+    def get_answer(self, entry):
+        cot = entry["long_answer"]
+        answer = entry["final_decision"]
+
+        answer_template = self.get_template(entry, return_answer=True)
+        return ' ' + answer_template.replace('{cot}', cot).replace('{answer}', answer)
