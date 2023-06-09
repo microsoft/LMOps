@@ -42,7 +42,6 @@ def _normalize_answer(text, punc_chars, punc_repl):
   text = replace_punctuation(text)
   text = remove_articles(text)
   text = white_space_fix(text)
-
   return text
 
 
@@ -82,10 +81,20 @@ def _f1_score(target, prediction):
   f1 = (2 * precision * recall) / (precision + recall)
   return f1
 
-def qa_metrics(targets, predictions):
+def qa_metrics(targets, predictions, return_list=False):
   """Computes exact match and f1 QA scores, expecting pre-normalized text."""
   if len(targets) != len(predictions):
     raise ValueError("Number of targets and predictions must match.")
+  if return_list:
+    em=[
+        _metric_max_over_ground_truths(_exact_match_score, t, p)
+        for p, t in zip(predictions, targets)
+    ]
+    f1=[
+        _metric_max_over_ground_truths(_f1_score, t, p)
+        for p, t in zip(predictions, targets)
+    ]
+    return em, f1
   em = np.mean([
       _metric_max_over_ground_truths(_exact_match_score, t, p)
       for p, t in zip(predictions, targets)
@@ -97,4 +106,5 @@ def qa_metrics(targets, predictions):
   em *= 100
   f1 *= 100
   logging.info("EM = %.2f, F1 = %.2f", em, f1)
+  #return {"em": em, "f1": f1}
   return em, f1

@@ -15,7 +15,7 @@ import logging
 import pickle
 import time
 from typing import List, Tuple, Dict, Iterator
-
+import os
 import hydra
 import numpy as np
 import torch
@@ -207,7 +207,7 @@ def save_results(
     top_passages_and_scores: List[Tuple[List[object], List[float]]],
     per_question_hits: List[List[bool]],
     out_file: str,
-    meta_data, 
+    meta_data,
 ):
     # join passages text with the result ids, their questions and assigning has|no answer labels
     merged_data = []
@@ -224,11 +224,11 @@ def save_results(
         merged_data.append(
             {
                 "instruction": q,
-                #"answers": q_answers, 
+                #"answers": q_answers,
                 "meta_data": meta,
                 "ctxs": [
                     {
-                        "prompt_pool_id": results_and_scores[0][c], 
+                        "prompt_pool_id": results_and_scores[0][c], # id in the prompt pool
                         "passage": docs[c][0],
                         "score": scores[c],
                         "meta_data":docs[c][2] 
@@ -238,10 +238,7 @@ def save_results(
             }
         )
 
-    #mk dir
-    import os
-    output_dir='/'.join(out_file.split('/')[:-1])
-    os.makedirs(output_dir,exist_ok=True)
+    os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w") as writer:
         writer.write(json.dumps(merged_data, indent=4) + "\n")
     logger.info("Saved results * scores  to %s", out_file)
