@@ -6,8 +6,8 @@ def load_train_dataset(dataset,size=None,listify=True):
         data = dataset['train']
         rand = random.Random(x=42)
         index_list = list(range(len(data))) 
-        rand.shuffle(index_list)
-        x = data.select(index_list[:size]) 
+        rand.shuffle(index_list) #shuffle index_list 
+        x = data.select(index_list[:size])
 
     else:
         x = dataset['train']

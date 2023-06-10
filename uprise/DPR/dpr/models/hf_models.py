@@ -177,7 +177,7 @@ def get_bert_tokenizer(pretrained_cfg_name: str, do_lower_case: bool = True, **k
         )
     except ValueError:
         return BertTokenizer.from_pretrained(
-            "/mnt/netapp7/ohadr/prompt_sel/DPR/bert-base-uncased", do_lower_case=do_lower_case
+            "/vc_data/v-dacheng/cache/models--bert-base-uncased/snapshots/0a6aa9128b6194f4f3c4db429b6cb4891cdb421b/", do_lower_case=do_lower_case
         )
         
 

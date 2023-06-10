@@ -47,7 +47,7 @@ def read_serialized_data_from_files(paths: List[str]) -> List:
     return results
 
 def read_data_from_json_files(paths) -> List:
-    if isinstance(paths,str): paths=[paths] 
+    if isinstance(paths,str): paths=[paths] #兼容list of str和str两种
     results = []
     for path in paths:
         with open(path, "r", encoding="utf-8") as f:

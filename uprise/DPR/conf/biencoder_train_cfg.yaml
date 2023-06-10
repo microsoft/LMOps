@@ -1,4 +1,3 @@
-
 # configuration groups
 defaults:
   - encoder: hf_bert

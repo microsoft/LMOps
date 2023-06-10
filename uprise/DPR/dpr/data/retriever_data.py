@@ -9,9 +9,8 @@ import hydra
 import jsonlines
 import torch
 from omegaconf import DictConfig
-from datasets import load_dataset
 
-from dpr.utils.data_utils import  App, read_data_from_json_files
+from dpr.utils.data_utils import read_data_from_json_files
 from dpr.data.biencoder_data import (
     BiEncoderPassage,
     normalize_passage,
@@ -21,12 +20,16 @@ from dpr.data.biencoder_data import (
     split_tables_to_chunks,
     remove_double_space,
 )
-from dpr.utils.tasks import task_map,train_cluster_map, test_cluster_map, get_prompt_files
+from dpr.utils.tasks import (
+    task_map,
+    get_prompt_files,
+)
 
 logger = logging.getLogger(__name__)
-QASample = collections.namedtuple("QuerySample", ["query", "id", "answers","meta_data"])
+QASample = collections.namedtuple(
+    "QuerySample", ["query", "id", "answers", "meta_data"]
+)
 TableChunk = collections.namedtuple("TableChunk", ["text", "title", "table_id"])
-
 
 
 class RetrieverData(torch.utils.data.Dataset):
@@ -106,8 +109,6 @@ class CsvQASrc(QASrc):
                     id = row[self.id_col]
                 data.append(QASample(self._process_question(question), id, answers))
         self.data = data
-
-
 
 
 class JsonlQASrc(QASrc):
@@ -265,58 +266,60 @@ class CsvCtxSrc(RetrieverData):
                     passage = normalize_passage(passage)
                 ctxs[sample_id] = BiEncoderPassage(passage, row[self.title_col])
 
-class EPRQASrc(QASrc):
+
+class UpriseQASrc(QASrc):
     def __init__(
         self,
         task_name,
-        file =  "",
+        file="",
         selector: DictConfig = None,
         question_attr: str = "question",
         answers_attr: str = "answers",
         id_attr: str = "id",
         special_query_token: str = None,
         query_special_suffix: str = None,
-        instruction_num=1,
         cache_dir: str = None,
-        task_setup_type: str='q',
-        split: str = None
+        task_setup_type: str = "q",
     ):
         super().__init__(file, selector, special_query_token, query_special_suffix)
-        self.task=task_map.cls_dic[task_name]()
-        logger.info("loading task split: %s", split) 
-        self.data = self.task.get_dataset(split=split, cache_dir=cache_dir)
+        self.task = task_map.cls_dic[task_name]()
+        logger.info("loading task evaluation split...")
+        # load evaluation split defined in task.py
+        self.data = self.task.get_dataset( 
+            split=None, cache_dir=cache_dir
+        )
         self.get_question = self.task.get_question
-        self.instruction_num=min(instruction_num,len(self.task.get_templates()))
-        logger.info("Instruction num per data sample: %d", self.instruction_num) 
-        assert task_setup_type=='q', 'when testing, the setup should only be q, no answer can be included'
+        assert (
+            task_setup_type == "q"
+        ), "when testing, the setup should only be q, no answer can be included"
+
     def load_data(self):
         data = []
         for id, jline in enumerate(self.data):
-            jline['id']=id 
-            question=self.get_question(jline) 
-            question=remove_double_space(question)
-            answers = ['None']
-            data.append(QASample(question, id, answers,jline))
+            jline["id"] = id
+            question = self.get_question(jline)
+            question = remove_double_space(question)
+            answers = ["None"]
+            data.append(QASample(question, id, answers, jline))
         self.data = data
 
 
 def reformat(text):
-    return " ".join([f"{i+1}#) {x.strip()}" for i,x in enumerate(text.split(";"))])
+    return " ".join([f"{i+1}#) {x.strip()}" for i, x in enumerate(text.split(";"))])
 
 
-class EPRCtxSrc(RetrieverData):
+class UpriseCtxSrc(RetrieverData):
     def __init__(
         self,
-        file = "",
+        file="",
         id_col: int = 0,
         text_col: int = 1,
         title_col: int = 2,
         id_prefix: str = None,
-        prompt_pool_path: str=None,
-        cache_dir: str=None,
+        prompt_pool_path: str = None,
         prompt_setup_type=None,
-        test_cluster: list=None,
-    ):  
+        train_clusters: str = None,
+    ):
         super().__init__(file)
         self.file = file
         self.text_col = text_col
@@ -324,24 +327,29 @@ class EPRCtxSrc(RetrieverData):
         self.id_col = id_col
         self.id_prefix = id_prefix
         self.prompt_setup_type = prompt_setup_type
-        if test_cluster!=None:
-            print('flan tune.....')
-            prompt_pool_path=get_prompt_files(prompt_pool_path, test_cluster)
+        if train_clusters != None:
+            prompt_pool_path = get_prompt_files(prompt_pool_path, train_clusters)
         logger.info("prompt files: %s", prompt_pool_path)
         self.prompt_pool = read_data_from_json_files(prompt_pool_path)
         logger.info("prompt passages num : %d", len(self.prompt_pool))
-        #self.normalize = normalize
+
     def load_data_to(self, ctxs: Dict[object, BiEncoderPassage]):
-        for sample_id,entry in enumerate(self.prompt_pool):
-            task=task_map.cls_dic[entry['task_name']]()
-            if self.prompt_setup_type=='q':
+        for sample_id, entry in enumerate(self.prompt_pool):
+            task = task_map.cls_dic[entry["task_name"]]()
+            
+            if self.prompt_setup_type == "q":
                 passage = task.get_question(entry)
-            elif self.prompt_setup_type=='a':
-                passage= task.get_answer(entry)
-            elif self.prompt_setup_type=='qa':
-                passage=task.get_question(entry)+' '+task.get_answer(entry)
-            passage=remove_double_space(passage)
-            ctxs[sample_id] = BiEncoderPassage(passage, "",entry)
+            elif self.prompt_setup_type == "a":
+                passage = task.get_answer(entry)
+            elif self.prompt_setup_type == "qa":
+                passage = (
+                    task.get_question(entry)
+                    + task.get_answer(entry)
+                )
+            passage = remove_double_space(passage)
+            ctxs[sample_id] = BiEncoderPassage(
+                passage, "", entry
+            ) # pass the entry as metadata
 
 class JsonCtxSrc(RetrieverData):
     def __init__(
@@ -366,10 +374,10 @@ class JsonCtxSrc(RetrieverData):
             reader = json.load(ifile)
             for row in reader:
                 sample_id = row["id"]
-                passage = row['text']
+                passage = row["text"]
                 if self.normalize:
                     passage = normalize_passage(passage)
-                ctxs[sample_id] = BiEncoderPassage(passage, row['title'])
+                ctxs[sample_id] = BiEncoderPassage(passage, row["title"])
 
 
 class KiltCsvCtxSrc(CsvCtxSrc):

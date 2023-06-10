@@ -32,9 +32,10 @@ class DataCollatorWithPaddingAndCuda:
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         metadata = [x.pop("metadata") for x in features]
-        features = {key: [example[key] for example in features] for key in features[0].keys()} 
+        features = {key: [example[key] for example in features] for key in features[0].keys()}
         left_pad=(self.tokenizer.padding_side=="left")
-        features={key: pad2sameLen(features[key],pad_idx=self.tokenizer.pad_token_id if 'input_ids' in key else 0, left_pad=left_pad) for key in features.keys()} #把同一区域内部的tensor格式变为一致
+        features={key: pad2sameLen(features[key],pad_idx=self.tokenizer.pad_token_id if 'input_ids' in key else 0, left_pad=left_pad) for key in features.keys()}
+        # for key in features.keys(): dic[key]=pad2sameLen(features[key])
         batch=BatchEncoding(features,tensor_type="pt")
         batch['metadata'] = ListWrapper(metadata)
         if self.device:

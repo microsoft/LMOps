@@ -1,0 +1,19 @@
+batch_size: 1
+model_name: "EleutherAI/gpt-neo-2.7B"
+output_train_file: ???
+output_valid_file: ???
+example_file: ??? # files containing the task inputs and its corresponding sampled prompt ids
+task_name: ???
+prompt_pool_path:
+cache_dir: ???
+max_length: 2048 # max seq length
+generate_max_len: 100 # max length to be generated
+
+dataset_reader:
+  _target_: src.dataset_readers.scorer_dsr.ScorerDatasetReader
+  example_file: ${example_file}
+  model_name: ${model_name}
+  task_name: ${task_name} 
+  prompt_pool_path: ${prompt_pool_path}
+  cache_dir: ${cache_dir}
+  max_length: ${max_length}
