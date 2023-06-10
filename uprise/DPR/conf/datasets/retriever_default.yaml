@@ -1,8 +1,46 @@
 # @package _group_
-qa_epr:
-  _target_: dpr.data.retriever_data.EPRQASrc
+qa_uprise:
+  _target_: dpr.data.retriever_data.UpriseQASrc
   task_name: ???
-  instruction_num: 1 
-  cache_dir: 
+  cache_dir: ???
   task_setup_type: q
-  split: 
+
+nq_test:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.nq-test
+
+nq_train:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.nq-train
+
+nq_dev:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.nq-dev
+
+trivia_test:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.trivia-test
+
+trivia_train:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.trivia-train
+
+trivia_dev:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.trivia-dev
+
+grailqa_dev:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.grailqa-dev
+  
+grailqa_train:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.grailqa-train
+
+webq_test:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.webq-test
+  
+curatedtrec_test:
+  _target_: dpr.data.retriever_data.CsvQASrc
+  file: data.retriever.qas.curatedtrec-test

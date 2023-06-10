@@ -1,0 +1,29 @@
+batch_size: 1
+model_name: "EleutherAI/gpt-neo-2.7B"
+output_file: ???
+res_file: ???
+prompt_file: ???
+max_length: 2048 # max length of tokenizer
+generate_max_len: 100 
+n_tokens: 2048 # max length of (prompt + task input+ task output)
+task_name: ???
+prompt_pool_path:
+num_prompts: -1
+random_sample: False
+cache_dir: ???
+random_seed: 0
+train_clusters: 
+
+dataset_reader:
+  _target_: src.dataset_readers.few_shot_dsr.FewShotDatasetReader
+  model_name: ${model_name}
+  task_name: ${task_name} 
+  prompt_file: ${prompt_file}
+  prompt_pool_path: ${prompt_pool_path}
+  num_prompts: ${num_prompts}
+  n_tokens: ${n_tokens}
+  random_sample: ${random_sample}
+  random_seed: ${random_seed}
+  cache_dir: ${cache_dir}
+  max_length: ${max_length}
+  train_clusters: ${train_clusters}

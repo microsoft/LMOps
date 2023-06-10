@@ -9,7 +9,6 @@
 """
  Pipeline to train DPR Biencoder
 """
-#from comet_ml import Experiment
 import logging
 import math
 import os
@@ -53,11 +52,6 @@ import os
 logger = logging.getLogger()
 setup_logger(logger)
 
-#experiment = Experiment(
-#    api_key=os.environ["WANDB_KEY"],
-#    project_name="epr",
-#    workspace="ohadrubin",
-#)
 
 class BiEncoderTrainer(object):
     """
@@ -220,7 +214,7 @@ class BiEncoderTrainer(object):
         # for distributed mode, save checkpoint for only one process
         save_cp = cfg.local_rank in [-1, 0] and (epoch > (cfg.train.num_train_epochs-3) or (epoch+1) % cfg.train.num_save_epochs==0)
         
-        if save_cp: 
+        if save_cp: # save a checkpoint before validation
             cp_name = self._save_checkpoint(scheduler, epoch, iteration)
             logger.info("Saved checkpoint to %s", cp_name)
 
@@ -237,9 +231,6 @@ class BiEncoderTrainer(object):
             
 
         if save_cp:
-            #cp_name = self._save_checkpoint(scheduler, epoch, iteration)
-            #logger.info("Saved checkpoint to %s", cp_name)
-
             if validation_loss < (self.best_validation_result or validation_loss + 1):
                 self.best_validation_result = validation_loss
                 self.best_cp_name = cp_name
@@ -269,7 +260,7 @@ class BiEncoderTrainer(object):
         for i, samples_batch in enumerate(data_iterator.iterate_ds_data()):
             if isinstance(samples_batch, Tuple):
                 samples_batch, dataset = samples_batch
-            #logger.info("Eval step: %d ,rnk=%s", i, cfg.local_rank) 不打了
+            #logger.info("Eval step: %d ,rnk=%s", i, cfg.local_rank) 
             biencoder_input = BiEncoder.create_biencoder_input2(
                 samples_batch,
                 self.tensorizer,
@@ -298,7 +289,6 @@ class BiEncoderTrainer(object):
             total_correct_predictions += correct_cnt
             batches += 1
             if (i + 1) % log_result_step == 0:
-                #experiment.log_metric("loss", loss.item(), step=0)
                 logger.info(
                     "Eval step: %d , used_time=%f sec., loss=%f ",
                     i,
@@ -352,7 +342,6 @@ class BiEncoderTrainer(object):
         log_result_step = cfg.train.log_batch_step
         dataset = 0
         for i, samples_batch in enumerate(data_iterator.iterate_ds_data()):
-            # samples += 1
             if (
                 len(q_represenations)
                 > cfg.train.val_av_rank_max_qs / distributed_factor
@@ -569,7 +558,6 @@ class BiEncoderTrainer(object):
 
             if i % log_result_step == 0:
                 lr = self.optimizer.param_groups[0]["lr"]
-                #experiment.log_metric("lr", lr)
 
                 logger.info(
                     "Epoch: %d: Step: %d/%d, loss=%f, lr=%f",
@@ -608,9 +596,7 @@ class BiEncoderTrainer(object):
 
         epoch_loss = (epoch_loss / epoch_batches) if epoch_batches > 0 else 0
         logger.info("Av Loss per epoch=%f", epoch_loss)
-        #experiment.log_metric("avg_loss", epoch_loss)
         logger.info("epoch total correct predictions=%d", epoch_correct_predictions)
-        #experiment.log_metric("correct_predictions", epoch_correct_predictions)
 
     def _save_checkpoint(self, scheduler, epoch, offset: int) -> str:
         
@@ -800,7 +786,7 @@ def _do_biencoder_fwd_pass(
     if cfg.n_gpu > 1:
         loss = loss.mean()
     if cfg.train.gradient_accumulation_steps > 1:
-        loss = loss / cfg.gradient_accumulation_steps
+        loss = loss / cfg.train.gradient_accumulation_steps
     return loss, is_correct
 
 
