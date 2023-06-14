@@ -1,7 +1,8 @@
-# MiniLLM: Knowledge Distillation of Large Language Models with Reverse KD Divergence
+# MiniLLM: Knowledge Distillation of Large Language Models
 
 ![Method](./figures/method.png)
-## 1 Environment
+## 1 Setup
+### 1.1 Environment
 ```bash
 pip3 install -e transformers/
 pip3 install deepspeed==0.8.0
@@ -17,9 +18,12 @@ or
 bash install.sh
 ```
 
+### 1.2 Download
+The resources of this repo can be download from this [link]().
+
 ## 2 Data
-### 2.1 Download Links
-Coming Soon
+### 2.1 Resources
+The training/evaluation data are in `data/`. The preprocessed data are in `processed_data/`.
 
 ### 2.2 Data Processing
 ```bash
@@ -34,8 +38,8 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 ```
 
 ## 3 Models
-### 3.1 Download Links
-Coming Soon
+### 3.1 Resources
+The checkpoints are in `results/`.
 
 ### 3.2 Change Model Parallel Size
 You can increase/decrease the tensor parallel sizes with

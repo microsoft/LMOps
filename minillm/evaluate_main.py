@@ -62,7 +62,6 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
     all_response_ids = []
     all_lm_losses = []
     
-    min_length = args.max_length if args.no_stop_gen else None
     generation_config = GenerationConfig (
         do_sample=args.do_sample,
         top_p=args.top_p,
@@ -71,16 +70,12 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
         no_repeat_ngram_size=args.no_repeat_ngram_size,
         repetition_penalty=args.repetition_penalty,
         max_length=args.max_length,
-        min_length=min_length,
-        eos_token_id=(None if args.cont_gen_at_end else tokenizer.eos_token_id),
-        pad_token_id=tokenizer.eos_token_id,
+        min_length=None,
+        eos_token_id=tokenizer.eos_token_id,
+        pad_token_id=tokenizer.pad_token_id,
         return_dict_in_generate=True,
         output_scores=True
     )
-    if args.cont_gen_at_end:
-        model.generation_config.eos_token_id = None
-
-    print("min length", min_length)
 
     with torch.no_grad():
         for it, (model_batch, no_model_batch) in enumerate(tqdm(dataloader, desc=f"Evaluating {args.data_names} ", disable=(dist.get_rank() != 0))):
@@ -118,7 +113,6 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
             gen_out = model.generate(
                 **model_batch,
                 generation_config=generation_config,
-                min_length=min_length,
                 max_new_tokens=max_new_tokens
             )
             full_ids = gen_out.sequences
@@ -155,7 +149,7 @@ def evaluate_main(args, tokenizer, model, dataset: PromptDataset, split, epoch, 
         
     lm_loss, query_ids, response_ids = run_model(args, tokenizer, model, dataset, epoch, device)
     query_strs = tokenizer.batch_decode(query_ids, skip_special_tokens=True)
-    response_strs = tokenizer.batch_decode(response_ids, skip_special_tokens=(not args.cont_gen_at_end))
+    response_strs = tokenizer.batch_decode(response_ids, skip_special_tokens=True)
     
     with open(os.path.join(args.save, "preds.txt"), "w") as f:
         for q, r in zip(query_strs, response_strs):

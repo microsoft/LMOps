@@ -402,16 +402,14 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
 
     print_rank("dp size", dp_world_size)
 
-    min_length = args.max_length if args.no_stop_gen else None
     generation_config = GenerationConfig(
         do_sample=args.do_sample,
         top_p=args.top_p,
         top_k=args.top_k,
         temperature=args.temperature,
-        no_repeat_ngram_size=args.no_repeat_ngram_size,
         repetition_penalty=args.repetition_penalty,
         max_length=args.max_length,
-        min_length=min_length,
+        min_length=None,
         eos_token_id=tokenizer.eos_token_id,
         pad_token_id=tokenizer.eos_token_id,
         return_dict_in_generate=True,
@@ -451,7 +449,6 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
                 gen_out = model.generate(
                     **gen_data,
                     generation_config=generation_config,
-                    min_length=min_length,
                     max_new_tokens=max_new_tokens)
                 
                 full_ids = gen_out.sequences
@@ -475,7 +472,7 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
         all_response_ids = all_gather(all_response_ids, dim=1, world_size=dp_world_size, group=dp_group, op="stack")
         all_response_ids = all_response_ids.view(-1, all_response_ids.size(-1))
         
-        responses = tokenizer.batch_decode(all_response_ids, skip_special_tokens=(not args.cont_gen_at_end))
+        responses = tokenizer.batch_decode(all_response_ids, skip_special_tokens=True)
     
     if get_rank() == 0:
         if args.eval_gen:
