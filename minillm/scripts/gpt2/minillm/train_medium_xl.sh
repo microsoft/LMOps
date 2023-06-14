@@ -13,7 +13,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_port $MASTER_PORT"
 
 # model
-BASE_PATH=${1-"/home/guyuxian/CodeRepo"}
+BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="medium-init"
 CKPT="${BASE_PATH}/results/gpt2/train/minillm_init/gpt2-medium"
 TEACHER_CKPT_NAME="xlarge-sft"

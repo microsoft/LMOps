@@ -13,7 +13,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_port $MASTER_PORT"
 
 # model
-BASE_PATH=${1-"/home/guyuxian/CodeRepo"}
+BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="7B-init"
 CKPT="${BASE_PATH}/results/llama/train/minillm_init/llama-7B"
 TEACHER_CKPT_NAME="13B-sft"
