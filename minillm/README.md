@@ -1,8 +1,7 @@
 # MiniLLM: Knowledge Distillation of Large Language Models
 
 ![Method](./figures/method.png)
-## 1 Setup
-### 1.1 Environment
+## 1 Environment
 ```bash
 pip3 install -e transformers/
 pip3 install deepspeed==0.8.0
@@ -18,12 +17,11 @@ or
 bash install.sh
 ```
 
-### 1.2 Download
-The resources of this repo can be download from this [link]().
-
 ## 2 Data
 ### 2.1 Resources
-The training/evaluation data are in `data/`. The preprocessed data are in `processed_data/`.
++ The training/evaluation data before processing can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The processed data can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/processed_data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
+
 
 ### 2.2 Data Processing
 ```bash
@@ -39,13 +37,15 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 
 ## 3 Models
 ### 3.1 Resources
-The checkpoints are in `results/`.
++ The pre-trained GPT-2 models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/gpt2.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The pre-trained OPT models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/opt.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The pre-trained LLaMA models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/llama.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
 
 ### 3.2 Change Model Parallel Size
 You can increase/decrease the tensor parallel sizes with
 ```bash
 python3 tools/convert_mp.py \
-    --input_path results/llama/train/llama-7B/minillm/ \
+    --input_path results/llama/train/minillm/7B-init-13B-sft \
     --source_mp_size 1 \
     --target_mp_size 4 \
     --model_type llama # choose from opt and llama
