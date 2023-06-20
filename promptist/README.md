@@ -57,8 +57,11 @@ grad.Interface(fn=generate,
 
 ## Environment Setup
 
-docker: chizewen/pytorch:1.12.1-mpi
 ```
+alias=`whoami | cut -d'.' -f2`; docker run -it --rm --runtime=nvidia --ipc=host --privileged -v /home/${alias}:/home/${alias} chizewen/pytorch:1.12.1-mpi bash
+```
+
+```bash
 pip install git+https://github.com/CZWin32768/accelerate.git
 pip install pytorch_lightning==1.7.7
 pip install transformers==4.23.1
