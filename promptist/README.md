@@ -82,3 +82,6 @@ python ./diffusers_examples/quick-start.py
 
 accelerate launch --multi_gpu --machine_rank ${OMPI_COMM_WORLD_RANK} --main_process_ip ${MASTER_ADDR} --main_process_port ${MASTER_PORT} --num_machines 4 --num_processes 32 ./diff_prompter/ppo_prompter.py --data /data_path --gpt_path /supervised_finetuned_gpt_path --trl_config ./diff_prompter/configs/ppo_config_a100_coco_bsz256_kl0.2.yml --checkpoint_dir /ckpt_dir
 ```
+
+## Data
+We release the data for SFT and RL at [Google Drive](https://drive.google.com/file/d/1EsuYEb9BuinJCdzvQ_gqa_Gu_sTyLWbf/view?usp=drive_link).
