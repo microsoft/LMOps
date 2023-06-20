@@ -1,0 +1,57 @@
+model:
+  model_path: "lvwerra/gpt2-imdb"  # Name of hf model to load
+  tokenizer_path: "gpt2"  # Name of hf tokenizer to load
+  model_type: "AcceleratePPOModel"  # Name of accelerate model type to load
+  num_layers_unfrozen: 2  # Number of bottom layers to freeze during training
+  share_network: False
+
+train:
+  seq_length: 256  # Size of LM context
+  epochs: 10000  # Train for max(epochs, total_steps)
+  total_steps: 500000  # Train for max(epochs, total_steps)
+  batch_size: 8  # batch size
+  # batch_size: 128  # batch size
+
+  lr_ramp_steps: 100  # learning rate warm up
+  lr_decay_steps: 79000  # learning rate decay
+  weight_decay: 1.0e-6  # weight decay param
+  learning_rate_init: 5.0e-5  # init learning rate
+  learning_rate_target: 5.0e-5  # target final learning rate
+  # learning_rate_target: 2.0e-6  # target final learning rate
+  opt_betas: [0.9, 0.95] # adam betas
+
+  checkpoint_interval: 500  # checkpoint interval
+  # eval_interval: 16  # eval interval
+  eval_interval: 64  # eval interval
+
+  pipeline: "PPOPipeline"  # prompt pipeline to load
+  orchestrator: "PPOOrchestrator"  # orchestrator to load
+
+  checkpoint_dir: "/ckpt_dir"
+  logging_dir: "/log_dir"
+
+method:
+  name: 'ppoconfig'  # Name of RL method config
+  # num_rollouts: 128  # Number of rollouts to collect per epoch
+  num_rollouts: 8  # Number of rollouts to collect per epoch
+  # chunk_size: 128  # Number of rollouts to collect in one loop of orchestrator
+  chunk_size: 8  # Number of rollouts to collect in one loop of orchestrator
+  ppo_epochs: 4  # Number of ppo epochs
+  init_kl_coef: 0.2  # init kl coefficient
+  target: 0.2  # target kl coefficient, set None for fixed kl coef
+  horizon: 10000  # PPO horizon
+  gamma: 1  # PPO discount
+  lam: 0.95  # PPO lambda
+  cliprange: 0.2  # clip range
+  cliprange_value: 0.2  # clip range
+  vf_coef: 2.3  # value term weight
+  gen_kwargs:
+    max_new_tokens: 75
+    min_length: 5  # LM min sample gen length
+    top_k: 0.0  # top k
+    top_p: 1.0  # top p
+    do_sample: False  # sample
+    num_return_sequences: 16
+    num_beam_groups: 16
+    num_beams: 16
+    diversity_penalty: 1.0

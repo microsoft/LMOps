@@ -54,3 +54,28 @@ grad.Interface(fn=generate,
                cache_examples=False,
                theme="default").launch(enable_queue=True, debug=True)
 ```
+
+## Environment Setup
+
+docker: chizewen/pytorch:1.12.1-mpi
+```
+pip install git+https://github.com/CZWin32768/accelerate.git
+pip install pytorch_lightning==1.7.7
+pip install transformers==4.23.1
+pip install ftfy regex tqdm scipy
+pip install git+https://github.com/openai/CLIP.git
+pip install --editable ./diffusers
+cd trlx
+pip install --editable .
+cd ..
+# please provide the access token of huggingface and your wandb key
+```
+
+
+## Train Promptist
+
+```
+python ./diffusers_examples/quick-start.py
+
+accelerate launch --multi_gpu --machine_rank ${OMPI_COMM_WORLD_RANK} --main_process_ip ${MASTER_ADDR} --main_process_port ${MASTER_PORT} --num_machines 4 --num_processes 32 ./diff_prompter/ppo_prompter.py --data /data_path --gpt_path /supervised_finetuned_gpt_path --trl_config ./diff_prompter/configs/ppo_config_a100_coco_bsz256_kl0.2.yml --checkpoint_dir /ckpt_dir
+```
