@@ -6,6 +6,6 @@ deepspeed==0.7.3
 einops==0.4.1
 numpy==1.23.2
 tqdm==4.64.0
-transformers==4.21.2
+transformers==4.30.0
 wandb==0.13.2
 torchtyping
