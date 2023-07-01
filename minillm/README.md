@@ -11,6 +11,7 @@ pip3 install numerize
 pip3 install rouge-score
 pip3 install torchtyping
 pip3 install rich
+pip3 install datasets
 ```
 or
 ```bash
@@ -19,11 +20,19 @@ bash install.sh
 
 ## 2 Data
 ### 2.1 Resources
-+ The training/evaluation data before processing can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The training/evaluation intruction-response data before processing can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
 + The processed data can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/processed_data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
 
 
 ### 2.2 Data Processing
+Get plain-text corpus $\mathcal{D}_\text{PT}$:
+```bash
+python3 tools/get_openwebtext.py
+```
+This script will replace the continuous `\n` in each document with a special token "<@x(x!>" and write each document in OpenWebText in a line, which is covenient for parallel processing. In `data/openwebtext/data.txt`, we give an example of the resulting format. You can follow this format to prepare other corpus beyond OpenWebText.
+
+Tokenize the data and store them in binary files:
 ```bash
 bash scripts/gpt2/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
 bash scripts/gpt2/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process OpenWebText Train / Validation Data
@@ -37,9 +46,9 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 
 ## 3 Models
 ### 3.1 Resources
-+ The pre-trained GPT-2 models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/gpt2.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
-+ The pre-trained OPT models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/opt.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
-+ The pre-trained LLaMA models can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/llama.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The baselines and MiniLLM models based on GPT-2 can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/gpt2.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The baselines and MiniLLM models based on OPT can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/opt.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The baselines and MiniLLM models based on LLaMA can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/llama.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
 
 ### 3.2 Change Model Parallel Size
 You can increase/decrease the tensor parallel sizes with
@@ -53,9 +62,9 @@ python3 tools/convert_mp.py \
 
 ## 4 Run Evaluation
 ```bash
-bash scripts/gpt2/run.sh /PATH/TO/MiniLLM
-bash scripts/opt/run.sh /PATH/TO/MiniLLM
-bash scripts/llama/run.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/eval/run_eval.sh /PATH/TO/MiniLLM
+bash scripts/opt/eval/run_eval.sh /PATH/TO/MiniLLM
+bash scripts/llama/eval/run_eval.sh /PATH/TO/MiniLLM
 ```
 
 ## 5 Train
@@ -113,4 +122,11 @@ bash scripts/gpt2/minillm/train_large_xl.sh /PATH/TO/MiniLLM
 ```
 
 ## 6 Citation
-Coming Soon
+```bibtex
+@article{minillm,
+  title={Knowledge Distillation of Large Language Models},
+  author={Gu, Yuxian and Dong, Li and Wei, Furu and Huang, Minlie},
+  journal={arXiv preprint arXiv:2306.08543},
+  year={2023}
+}
+```

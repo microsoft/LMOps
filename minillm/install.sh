@@ -7,3 +7,4 @@ pip3 install numerize
 pip3 install rouge-score
 pip3 install torchtyping
 pip3 install rich
+pip3 install datasets
