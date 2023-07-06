@@ -232,10 +232,10 @@ class UpriseDataset(Dataset):
             # when multi_task == False, 
             # random sample negatives from the same training set, 
             # but avoid choosing those already existed the the positives/hard negatives
+            filtered_prompt_pool = [prompt for prompt in self.prompt_pool if prompt['id'] not in positive_ids + hard_negative_ids]
             negative_cntx = [
                 {"demonstration": self.format_example(n_example, self.prompt_setup_type)}
-                for n_example in random.choices(self.prompt_pool, k=self.top_k)
-                if not n_example["id"] in positive_ids + hard_negative_ids
+                for n_example in random.choices(filtered_prompt_pool, k=self.top_k)
             ]
 
         question = self.format_example(entry, self.task_setup_type)
