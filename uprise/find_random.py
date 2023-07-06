@@ -44,8 +44,7 @@ def find(cfg):
         # `ctxs` stores the sampled prompt ids 
         element["ctxs"] = [
             {"id": int(a)}
-            for a in random.sample(idx_list, k=min(cfg.L, len(data_list)))
-            if int(a) != i # avoid selecting the task input itself
+            for a in random.sample([idx for idx in idx_list if idx != i], k=min(cfg.L, len(data_list)-1)) # avoid selecting the task input itself
         ]
     return data_list
 
