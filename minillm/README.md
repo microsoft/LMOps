@@ -5,6 +5,7 @@
 ```bash
 pip3 install -e transformers/
 pip3 install deepspeed==0.8.0
+pip3 install pydantic==1.10.8
 pip3 install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 pip3 install nltk
 pip3 install numerize
