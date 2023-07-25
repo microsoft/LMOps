@@ -196,7 +196,7 @@ class BiEncoder(nn.Module):
             neg_ctxs = neg_ctxs[0:num_other_negatives]
             hard_neg_ctxs = hard_neg_ctxs[0:num_hard_negatives]
 
-            all_ctxs = [positive_ctx] + neg_ctxs + hard_neg_ctxs
+            all_ctxs = [positive_ctx] + hard_neg_ctxs + neg_ctxs
             hard_negatives_start_idx = 1
             hard_negatives_end_idx = 1 + len(hard_neg_ctxs)
 
