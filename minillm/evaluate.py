@@ -1,4 +1,3 @@
-import sys
 import time
 import os
 
@@ -8,30 +7,14 @@ import deepspeed
 
 import json
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    AutoConfig,
-    mpu,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,)
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM
-}
+from transformers import mpu
 
 from arguments import get_args
 
 from utils import initialize, print_args
 from utils import print_rank
 from utils import save_rank
-from utils import load_parallel
-
+from utils import get_tokenizer, get_model
 
 from evaluate_main import evaluate_main, prepare_dataset_main
 
@@ -39,35 +22,7 @@ from evaluate_main import evaluate_main, prepare_dataset_main
 torch.set_num_threads(4)
 
 
-def get_tokenizer(args):
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    if args.model_type in ["gpt2", "opt", "llama", "gptj"]:
-        tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-    return tokenizer
-
-
-def get_model(args, device):
-    if args.model_parallel:
-        config = AutoConfig.from_pretrained(args.model_path)
-        config.is_model_parallel = True
-        model = parallel_model_map[args.model_type](config).half()
-        load_parallel(model, args.model_path)
-        model.eval()
-
-        if mpu.get_data_parallel_rank() == 0:
-            print(' > number of parameters on model parallel rank {}: {}'.format(
-                mpu.get_model_parallel_rank(),
-                sum([p.nelement() for p in model.parameters()])), flush=True)
-    else:
-        model = AutoModelForCausalLM.from_pretrained(args.model_path)
-    
-    if args.gradient_checkpointing:
-        model.gradient_checkpointing_enable()
-    return model
-
-
-def setup_model_and_optimizer(args, ds_config, device, set_optim=True):
+def setup_model(args, ds_config, device):
     # get the model
     model = get_model(args, device)
     # get the optimizer and lr_scheduler
@@ -113,7 +68,9 @@ def main():
     
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
-    
+
+    args.deepspeed_config = None
+
     # get the tokenizer
     tokenizer = get_tokenizer(args)
     if args.type == "eval_main":
@@ -123,7 +80,7 @@ def main():
         )
     else:
         raise NotImplementedError
-    model = setup_model_and_optimizer(args, ds_config, device, set_optim=args.do_train)
+    model = setup_model(args, ds_config, device)
     
     if args.type == "eval_main":
         evaluate_main(args, tokenizer, model, dataset["test"], "test", 0, device)

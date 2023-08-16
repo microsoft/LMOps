@@ -2,10 +2,10 @@ import torch
 import os
 import json
 import torch.distributed as dist
+from accelerate import init_empty_weights
 
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
     AutoConfig,
     ParallelOPTForCausalLM,
     ParallelGPTJForCausalLM,
@@ -20,36 +20,24 @@ parallel_model_map = {
 }
 
 from arguments import get_args
-from utils import print_args, initialize, load_parallel
+from utils import print_args, initialize, load_parallel, get_tokenizer
 
 from minillm import train, Reward
 
 
-def get_tokenizer(args):
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    tokenizer.padding_side = "left"
-    tokenizer.truncation_side = "right"
-    # tokenizer.add_special_tokens({"sep_token": "<sep>", "pad_token": "<pad>"})
-    if args.model_type in ["gpt2", "opt", "llama", "gptj"]:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    return tokenizer
-
-
 def get_teacher_model(args, device):
+    config = AutoConfig.from_pretrained(args.teacher_model_path)
     if args.model_parallel:
-        config = AutoConfig.from_pretrained(args.teacher_model_path)
         config.is_model_parallel = True
-        model = parallel_model_map[args.teacher_model_type](config)
+        with init_empty_weights():
+            model = parallel_model_map[args.model_type](config).half()
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
-        model.eval()
     else:
-        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path).to(device)
+        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
     
-    if args.teacher_model_fp16:
-        model = model.half()
-    
+    model.eval()
+
     return model
 
 
@@ -73,6 +61,8 @@ def main():
     ds_config["train_micro_batch_size_per_gpu"] = args.batch_size
     ds_config["gradient_clipping"] = args.clip_grad
     ds_config["steps_per_print"] = 10000000
+    
+    args.deepspeed_config = None
     
     if args.teacher_model_type is None:
         args.teacher_model_type = args.model_type

@@ -16,6 +16,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME=${4-"llama-7B"}
 CKPT="${BASE_PATH}/results/llama/train/${CKPT_NAME}/"
+MP_SIZE=4
 # data
 DATA_NAMES="dolly"
 DATA_DIR="${BASE_PATH}/data/dolly"
@@ -32,6 +33,8 @@ OPTS+=" --base-path ${BASE_PATH}"
 OPTS+=" --model-path ${CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
+OPTS+=" --model-parallel"
+OPTS+=" --model-parallel-size ${MP_SIZE}"
 OPTS+=" --model-type llama"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"

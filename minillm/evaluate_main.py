@@ -1,23 +1,7 @@
 from data_utils.prompt_datasets import PromptDataset
-from transformers import (
-    GenerationConfig,
-    AutoModelForCausalLM,
-    mpu,
-    AutoConfig,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,)
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM
-}
+from transformers import GenerationConfig, mpu
 
 import os
-import random
 import nltk
 nltk.download("punkt")
 
@@ -28,7 +12,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
 import numpy as np
 import json
-from utils import print_rank, save_rank, load_parallel
+from utils import print_rank, save_rank
 
 from rouge_metric import compute_metrics
 
@@ -127,22 +111,6 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
         mean_lm_loss,
         all_query_ids,
         all_response_ids)
-
-
-def get_reward_model(args, device):
-    if args.model_parallel:
-        config = AutoConfig.from_pretrained(args.teacher_model_path)
-        model = parallel_model_map[args.model_type](config)
-        load_parallel(model, args.teacher_model_path)
-        model = model.to(device)
-        model.eval()
-    else:
-        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path).to(device)
-
-    if args.teacher_model_fp16:
-        model = model.half()
-
-    return model
 
 
 def evaluate_main(args, tokenizer, model, dataset: PromptDataset, split, epoch, device):

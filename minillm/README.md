@@ -60,6 +60,7 @@ python3 tools/convert_mp.py \
     --target_mp_size 4 \
     --model_type llama # choose from opt and llama
 ```
+To use the model with Model Parallel, we provide two example scripts for [training](https://github.com/microsoft/LMOps/tree/main/minillm/scripts/llama/sft/sft_7B_mp4.sh) and [evaluation](https://github.com/microsoft/LMOps/tree/main/minillm/scripts/llama/sft/eval_main_dolly_mp4.sh).
 
 ## 4 Run Evaluation
 ```bash
