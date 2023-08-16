@@ -38,6 +38,7 @@ def get_model(model_path, model_type, model_parallel, gradient_checkpointing):
             model = parallel_model_map[model_type](config).half()
         load_parallel(model, model_path)
     else:
+        config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(model_path, config=config, device_map={"": torch.cuda.current_device()}, torch_dtype=torch.float16)
 
     model.eval()

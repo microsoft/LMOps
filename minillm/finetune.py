@@ -51,6 +51,7 @@ def get_teacher_model(args, device):
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:
+        config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
     
     model.eval()

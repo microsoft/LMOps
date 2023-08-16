@@ -144,6 +144,7 @@ def get_model(args, device):
                 mpu.get_model_parallel_rank(),
                 sum([p.nelement() for p in model.parameters()])), flush=True)
     else:
+        config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
 
         if dist.get_rank() == 0:
