@@ -1,4 +1,3 @@
-import sys
 import time
 import os
 
@@ -21,21 +20,10 @@ from transformers import (
     AutoTokenizer,
     AutoConfig,
     mpu,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,
     GenerationConfig)
 
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM
-}
-
 from transformers import get_constant_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from arguments import get_args
 
@@ -45,61 +33,27 @@ from utils import print_rank, get_rank
 from utils import save_rank
 from utils import all_gather
 from utils import load_parallel, save_parallel
+from utils import get_tokenizer, get_model, parallel_model_map
+
+from accelerate import init_empty_weights
 
 from rouge_metric import compute_metrics
 
 torch.set_num_threads(4)
 
 
-def get_tokenizer(args):
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    if args.model_type in ["gpt2", "opt", "llama", "gptj"]:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-    
-    return tokenizer
-
-
-def get_model(args, device):
-    config = AutoConfig.from_pretrained(args.model_path)
-    if args.dropout_path_rate is not None:
-        config.drop_path_rate = args.dropout_path_rate
-    
-    if args.model_parallel:
-        config.is_model_parallel = True
-        model = parallel_model_map[args.model_type](config).half()
-        load_parallel(model, args.model_path)
-
-        if mpu.get_data_parallel_rank() == 0:
-            print(' > number of parameters on model parallel rank {}: {}'.format(
-                mpu.get_model_parallel_rank(),
-                sum([p.nelement() for p in model.parameters()])), flush=True)
-    else:
-        model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config)
-        
-        if dist.get_rank() == 0:
-            print(' > number of parameters: {}'.format(
-                sum([p.nelement() for p in model.parameters()])), flush=True)
-        # model = DDP(model)
-        # NOTE: no need for DDP since deepspeed has done
-    if args.gradient_checkpointing:
-        model.gradient_checkpointing_enable()
-        
-    return model
-
-
 def get_teacher_model(args, device):
+    config = AutoConfig.from_pretrained(args.teacher_model_path)
     if args.model_parallel:
-        config = AutoConfig.from_pretrained(args.teacher_model_path)
         config.is_model_parallel = True
-        model = parallel_model_map[args.teacher_model_type](config)
+        with init_empty_weights():
+            model = parallel_model_map[args.model_type](config).half()
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
-        model.eval()
     else:
-        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path).to(device)
+        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
     
-    if args.teacher_model_fp16:
-        model = model.half()
+    model.eval()
     
     return model
 
@@ -522,6 +476,8 @@ def main():
     
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
+    
+    args.deepspeed_config = None
     
     # get the tokenizer
     tokenizer = get_tokenizer(args)

@@ -7,6 +7,8 @@ import torch
 import torch.nn.functional as F
 import torch.distributed as dist
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR
+from accelerate import init_empty_weights
+
 
 from transformers import (
     AutoModelForCausalLM,
@@ -25,18 +27,20 @@ parallel_model_map = {
 }
 
 
-from utils import print_rank, load_parallel
+from utils import load_parallel
 
 
 def get_model(model_path, model_type, model_parallel, gradient_checkpointing):
+    config = AutoConfig.from_pretrained(model_path)
     if model_parallel:
-        config = AutoConfig.from_pretrained(model_path)
         config.is_model_parallel = True
-        model = parallel_model_map[model_type](config).half()
+        with init_empty_weights():
+            model = parallel_model_map[model_type](config).half()
         load_parallel(model, model_path)
-        model.eval()
     else:
-        model = AutoModelForCausalLM.from_pretrained(model_path)
+        model = AutoModelForCausalLM.from_pretrained(model_path, config=config, device_map={"": torch.cuda.current_device()}, torch_dtype=torch.float16)
+
+    model.eval()
 
     if gradient_checkpointing:
         model.gradient_checkpointing_enable()
