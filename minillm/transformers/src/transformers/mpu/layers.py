@@ -70,7 +70,7 @@ class VocabParallelEmbedding(torch.nn.Module):
         init_method: method to initialize weights.
     """
     def __init__(self, num_embeddings, embedding_dim,
-                 init_method=init.xavier_normal_, padding_idx=None):
+                 init_method=init.xavier_normal_, padding_idx=None, do_init=False):
         super(VocabParallelEmbedding, self).__init__()
         # Keep the input dimensions.
         self.num_embeddings = num_embeddings
@@ -95,9 +95,10 @@ class VocabParallelEmbedding(torch.nn.Module):
                                              self.embedding_dim))
         self.weight.model_parallel = True
         # And initialize.
-        _initialize_affine_weight(
-            self.weight, self.num_embeddings, self.embedding_dim,
-            self.num_embeddings_per_partition, 0, init_method)
+        if do_init:
+            _initialize_affine_weight(
+                self.weight, self.num_embeddings, self.embedding_dim,
+                self.num_embeddings_per_partition, 0, init_method)
 
     def forward(self, input_):
         # Build the mask.
@@ -130,7 +131,7 @@ class ParallelEmbedding(torch.nn.Module):
     """
     def __init__(self, num_embeddings, embedding_dim,
                  init_method=init.xavier_normal_,
-                 keep_master_weight_for_test=False):
+                 keep_master_weight_for_test=False, do_init=False):
         super(ParallelEmbedding, self).__init__()
         # Keep the input dimensions.
         self.num_embeddings = num_embeddings
@@ -152,10 +153,11 @@ class ParallelEmbedding(torch.nn.Module):
                                              self.embedding_dim_per_partition))
         self.weight.model_parallel = True
         # And initialize. split the weights to different model parallel devices
-        _initialize_affine_weight(
-            self.weight, self.num_embeddings, self.embedding_dim,
-            self.embedding_dim_per_partition, 1, init_method,
-            stride=1, return_master_weight=False)
+        if do_init:
+            _initialize_affine_weight(
+                self.weight, self.num_embeddings, self.embedding_dim,
+                self.embedding_dim_per_partition, 1, init_method,
+                stride=1, return_master_weight=False)
 
     def forward(self, input_):
         input_parallel = copy_to_model_parallel_region(input_)
@@ -191,7 +193,7 @@ class ColumnParallelLinear(torch.nn.Module):
     """
     def __init__(self, input_size, output_size, bias=True, gather_output=True,
                  init_method=init.xavier_normal_, stride=1,
-                 keep_master_weight_for_test=False):
+                 keep_master_weight_for_test=False, do_init=False):
         super(ColumnParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -218,10 +220,11 @@ class ColumnParallelLinear(torch.nn.Module):
             self.register_parameter('bias', None)
 
         # Initialize weight.
-        self.master_weight = _initialize_affine_weight(
-            self.weight, self.output_size, self.input_size,
-            self.output_size_per_partition, 0, init_method,
-            stride=stride, return_master_weight=keep_master_weight_for_test)
+        if do_init:
+            self.master_weight = _initialize_affine_weight(
+                self.weight, self.output_size, self.input_size,
+                self.output_size_per_partition, 0, init_method,
+                stride=stride, return_master_weight=keep_master_weight_for_test)
 
     def forward(self, input_):
         # Set up backprop all-reduce.
@@ -267,7 +270,7 @@ class RowParallelLinear(torch.nn.Module):
     def __init__(self, input_size, output_size, bias=True,
                  input_is_parallel=False,
                  init_method=init.xavier_normal_, stride=1,
-                 keep_master_weight_for_test=False):
+                 keep_master_weight_for_test=False, do_init=False):
         super(RowParallelLinear, self).__init__()
 
         # Keep input parameters
@@ -293,10 +296,11 @@ class RowParallelLinear(torch.nn.Module):
             self.register_parameter('bias', None)
 
         # Initialize weight.
-        self.master_weight = _initialize_affine_weight(
-            self.weight, self.output_size, self.input_size,
-            self.input_size_per_partition, 1, init_method,
-            stride=stride, return_master_weight=keep_master_weight_for_test)
+        if do_init:
+            self.master_weight = _initialize_affine_weight(
+                self.weight, self.output_size, self.input_size,
+                self.input_size_per_partition, 1, init_method,
+                stride=stride, return_master_weight=keep_master_weight_for_test)
 
     def forward(self, input_):
         # Set up backprop all-reduce.

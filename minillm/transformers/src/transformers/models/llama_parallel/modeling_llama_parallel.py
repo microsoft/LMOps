@@ -134,14 +134,12 @@ class LlamaRMSNorm(nn.Module):
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):
+        input_dtype = hidden_states.dtype
         variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
 
-        # convert into half-precision if necessary
-        if self.weight.dtype in [torch.float16, torch.bfloat16]:
-            hidden_states = hidden_states.to(self.weight.dtype)
+        return (self.weight * hidden_states).to(input_dtype)
 
-        return self.weight * hidden_states
 
 
 class LlamaRotaryEmbedding(torch.nn.Module):
@@ -231,6 +229,31 @@ class ParallelLlamaMLP(nn.Module):
         return self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
 
 
+class LoRA(nn.Module):
+    def __init__(self, in_dim, out_dim, lora_config):
+        super().__init__()
+        self.weight = ColumnParallelLinear(in_dim, out_dim,
+                                           stride=1,
+                                           bias=False,
+                                           gather_output=False)
+        self.lora_A = nn.Linear(in_dim, lora_config["r"], bias=False)
+        self.lora_B = ColumnParallelLinear(lora_config["r"], out_dim,
+                                           stride=1,
+                                           bias=False,
+                                           gather_output=False)
+        nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_B.weight)
+        if lora_config["dropout"] > 0.0:
+            self.lora_dropout_layer = nn.Dropout(p=lora_config["dropout"])
+        else:
+            self.lora_dropout_layer = nn.Identity()
+        self.scaling = lora_config["alpha"] / lora_config["r"]
+    
+    def forward(self, x):
+        result = self.weight(x) + self.lora_B(self.lora_A(self.lora_dropout_layer(x))) * self.scaling
+        return result
+
+
 class ParallelLlamaAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
@@ -315,7 +338,7 @@ class ParallelLlamaAttention(nn.Module):
 
         if attn_weights.size() != (bsz, self.num_heads_per_partition, q_len, kv_seq_len):
             raise ValueError(
-                f"Attention weights should be of size {(bsz * self.num_heads_per_partition, q_len, kv_seq_len)}, but is"
+                f"Attention weights should be of size {(bsz, self.num_heads, q_len, kv_seq_len)}, but is"
                 f" {attn_weights.size()}"
             )
 
@@ -325,7 +348,9 @@ class ParallelLlamaAttention(nn.Module):
                     f"Attention mask should be of size {(bsz, 1, q_len, kv_seq_len)}, but is {attention_mask.size()}"
                 )
             attn_weights = attn_weights + attention_mask
-            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
+            attn_weights = torch.max(
+                attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
+            )
 
         # upcast attention to fp32
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
@@ -422,6 +447,7 @@ class ParallelLlamaPreTrainedModel(PreTrainedModel):
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
     _no_split_modules = ["LlamaDecoderLayer"]
+    _skip_keys_device_placement = "past_key_values"
     _keys_to_ignore_on_load_unexpected = [r"decoder\.version"]
 
     def _init_weights(self, module):
@@ -657,6 +683,41 @@ class ParallelLlamaForCausalLM(ParallelLlamaPreTrainedModel):
 
     def set_force_gradient_checkpointing(self, value):
         self.model.force_gradient_checkpointing = value
+
+    def add_lora(self, lora_config):
+        self.lora_config = lora_config
+        if lora_config.get("target_keys", None) is not None:
+            target_keys = lora_config.get("target_keys", None).split(",")
+        else:
+            target_keys = ["q_proj", "v_proj"]
+            
+        keys = [key for key, _ in self.named_modules()]
+        for key in keys:
+            if any([target_key in key for target_key in target_keys]):
+                old_module = self.get_submodule(key)
+                device = old_module.weight.device
+                out_dim, in_dim = old_module.weight.size()
+                parent = self.get_submodule(".".join(key.split(".")[:-1]))
+                target_key = key.split(".")[-1]
+                new_module = LoRA(in_dim, out_dim * get_model_parallel_world_size(), lora_config).to(device)
+                setattr(parent, target_key, new_module)
+                new_module.weight.weight = old_module.weight
+
+        for n, p in self.named_parameters():
+            if "lora" not in n:
+                p.requires_grad = False
+        
+        if self.is_gradient_checkpointing:
+            self.enable_input_require_grads()
+
+    def lora_state_dict(self):
+        keys = [key for key, _ in self.named_modules()]
+        lora_dict = {}
+        for key in keys:
+            if "lora" in key:
+                module = self.get_submodule(key)
+                lora_dict.update(module.state_dict(prefix=key + "."))
+        return lora_dict 
 
     def forward(
         self,
