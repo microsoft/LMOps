@@ -7,6 +7,7 @@ from .trainer import PPOTrainer
 
 from utils import get_rank, print_rank, all_gather, save_rank
 from .utils import get_rev_kl
+from transformers import mpu
 
 class PPOSampler():
     """
@@ -43,6 +44,8 @@ class PPOSampler():
         ppo_rl_elements = []
 
         while len(ppo_rl_elements) < num_rollouts:
+            if mpu.get_model_parallel_rank() == 0:
+                print(f"Rank {get_rank()}: Number Sampling Elements {len(ppo_rl_elements)} / {num_rollouts}")
             try:
                 batch: PromptBatch = next(self.pipeline_iterator)
             except StopIteration:
