@@ -178,28 +178,13 @@ class PPOTrainer():
         )
         return attention_mask
 
-    def forward_ppo_model(self, query_ids, response_ids, inf_mask=None):
-        batch = self.get_model_inputs(
-            query_ids, response_ids
-        )
+    def forward_model(self, batch):
         outputs = self.model(
             **batch,
             return_dict=True,
             use_cache=False,
         )
-        
-        start = query_ids.size(1) - 1 # "-1" for the first generated token AS TARGET
-        end = query_ids.size(1) + response_ids.size(1) - 1 # "remove the last token that does not have target"
-
-        logits = outputs.logits
-        logits = logits / self.args.temperature
-        logits = logits[:, start:end]
-        if inf_mask is not None:
-            logits = logits.masked_fill(inf_mask, -float("inf"))
-        mask = batch["attention_mask"][:, start:end]
-        
-        logprobs = get_log_probs(logits, response_ids, mask, inf_mask, model_parallel=self.args.model_parallel)
-        return logits, logprobs
+        return outputs
 
     def compute_logits_and_log_probs(self, query_ids, response_ids, inf_mask=None, base="base", return_logprobs=True):
         batch = self.get_model_inputs(
@@ -247,7 +232,7 @@ class PPOTrainer():
         self.global_iter_count = 1
         self.nth_evaluation = 0
 
-        self.evaluate()
+        # self.evaluate()
 
         print_rank("Total Steps:", self.total_steps, "Epochs:", self.args.epochs)
         lm_epochs = 0        
@@ -268,6 +253,7 @@ class PPOTrainer():
                             lm_batch = next(self.lm_iterator)
 
                     self.store.move_to_device(batch, self.device)
+                    self.lm_pipeline.move_to_device(*lm_batch, self.device)
                     stats = {}
 
                     if self.args.model_parallel:
@@ -276,14 +262,18 @@ class PPOTrainer():
                     if self.args.gradient_checkpointing:
                         self.model.module.set_force_gradient_checkpointing(True)
                     
+                    input_batch = self.losses.get_input_batch(batch, lm_batch)
+                    logits = self.forward_model(input_batch).logits
+                    ppo_logits = logits[:batch.query_tensors.size(0)]
+                    lm_logits = logits[batch.query_tensors.size(0):]
+
                     # forward
                     forward_time = time()
                     # compute rl-related loss on explored data
-                    rl_loss, rl_loss_stats = self.losses.ppo_loss(batch)
+                    rl_loss, rl_loss_stats = self.losses.ppo_loss(batch, ppo_logits)
                     stats.update(rl_loss_stats)
                     # compute lm-related loss on pre-training data
-                    self.lm_pipeline.move_to_device(*lm_batch, self.device)
-                    pt_loss, pt_loss_stats = self.losses.pt_loss(lm_batch)
+                    pt_loss, pt_loss_stats = self.losses.pt_loss(lm_batch, lm_logits)
                     stats.update(pt_loss_stats)
                     
                     loss = rl_loss + self.args.lm_coef * pt_loss
@@ -341,7 +331,7 @@ class PPOTrainer():
                             one_step_time
                         )
                         for key in keys:
-                            prefix += "| {}: {:.4f} ".format(key, log_stats[key])
+                            prefix += "| {}: {:.4f} ".format(key, log_stats.get(key, 0))
                         return prefix + suffix
 
                     mid_log_step = self.args.gradient_accumulation_steps // self.args.mid_log_num
