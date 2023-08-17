@@ -17,7 +17,7 @@ BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="7B-init"
 CKPT="${BASE_PATH}/results/llama/train/minillm_init/llama-7B"
 TEACHER_CKPT_NAME="13B-sft"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/llama-13B/"
+TEACHER_CKPT="${BASE_PATH}/results/llama/train/sft/llama-13B/"
 MP_SIZE=4
 # data
 PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/llama/"
@@ -59,7 +59,7 @@ OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --max-length 512"
 OPTS+=" --max-prompt-length 256"
 OPTS+=" --warmup-iters 100"
-OPTS+=" --scheduler-name consine_trm"
+OPTS+=" --scheduler-name cosine_trm"
 # runtime
 OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --seed 10"
