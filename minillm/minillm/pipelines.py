@@ -79,9 +79,9 @@ class PPOPipeline():
             model_batch["attention_mask"][i][-len(prompt):] = 1
             if response is not None:
                 full_ids = np.concatenate([prompt, response], axis=0)
-                no_model_batch["full_ids"][:len(full_ids)-1] = torch.tensor(full_ids[:-1], dtype=torch.long)
-                no_model_batch["full_attention_mask"][:len(full_ids)-1] = 1.0
-                no_model_batch["full_label_ids"][len(prompt)-1:len(full_ids)-1] = torch.tensor(response, dtype=torch.long)
+                no_model_batch["full_ids"][i][:len(full_ids)-1] = torch.tensor(full_ids[:-1], dtype=torch.long)
+                no_model_batch["full_attention_mask"][i][:len(full_ids)-1] = 1.0
+                no_model_batch["full_label_ids"][i][len(prompt)-1:len(full_ids)-1] = torch.tensor(response, dtype=torch.long)
         
         return model_batch, no_model_batch
 
