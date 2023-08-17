@@ -44,7 +44,7 @@ class PPOSampler():
         ppo_rl_elements = []
 
         while len(ppo_rl_elements) < num_rollouts:
-            if mpu.get_model_parallel_rank() == 0:
+            if ((not self.args.model_parallel) or mpu.get_model_parallel_rank()) == 0:
                 print(f"Rank {get_rank()}: Number Sampling Elements {len(ppo_rl_elements)} / {num_rollouts}")
             try:
                 batch: PromptBatch = next(self.pipeline_iterator)
