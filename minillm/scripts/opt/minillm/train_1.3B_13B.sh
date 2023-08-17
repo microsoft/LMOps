@@ -17,7 +17,7 @@ BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="1.3B-init"
 CKPT="${BASE_PATH}/results/opt/train/minillm_init/opt-1.3B"
 TEACHER_CKPT_NAME="13B-sft"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/opt-13B/"
+TEACHER_CKPT="${BASE_PATH}/results/opt/train/sft/opt-13B/"
 MP_SIZE=4
 # data
 PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/opt/"
