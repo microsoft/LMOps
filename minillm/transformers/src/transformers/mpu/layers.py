@@ -93,7 +93,7 @@ class VocabParallelEmbedding(torch.nn.Module):
         # Allocate weights.
         self.weight = Parameter(torch.Tensor(self.num_embeddings_per_partition,
                                              self.embedding_dim))
-        self.weight.model_parallel = True
+        # self.weight.model_parallel = True
         # And initialize.
         if do_init:
             _initialize_affine_weight(
@@ -151,7 +151,7 @@ class ParallelEmbedding(torch.nn.Module):
         # Allocate weights.
         self.weight = Parameter(torch.Tensor(self.num_embeddings,
                                              self.embedding_dim_per_partition))
-        self.weight.model_parallel = True
+        # self.weight.model_parallel = True
         # And initialize. split the weights to different model parallel devices
         if do_init:
             _initialize_affine_weight(
@@ -209,10 +209,10 @@ class ColumnParallelLinear(torch.nn.Module):
         # we allocate the transpose.
         self.weight = Parameter(torch.Tensor(self.output_size_per_partition,
                                              self.input_size))
-        self.weight.model_parallel = True
+        # self.weight.model_parallel = True
         if bias:
             self.bias = Parameter(torch.Tensor(self.output_size_per_partition))
-            self.bias.model_parallel = True
+            # self.bias.model_parallel = True
             # Always initialize bias to zero.
             with torch.no_grad():
                 self.bias.zero_()
@@ -286,7 +286,7 @@ class RowParallelLinear(torch.nn.Module):
         # we allocate the transpose.
         self.weight = Parameter(torch.Tensor(self.output_size,
                                              self.input_size_per_partition))
-        self.weight.model_parallel = True
+        # self.weight.model_parallel = True
         if bias:
             self.bias = Parameter(torch.Tensor(self.output_size))
             # Always initialize bias to zero.
