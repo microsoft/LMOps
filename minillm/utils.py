@@ -6,6 +6,7 @@ import torch.distributed as dist
 from torch.distributed import get_rank
 import random
 import torch
+import torch.nn as nn
 from datetime import timedelta
 import deepspeed
 from accelerate import load_checkpoint_and_dispatch, init_empty_weights
@@ -160,6 +161,20 @@ def get_model(args, device):
     print_rank(f"Model load time: {ed_time - st_time}s")
     
     return model
+
+
+def get_optimizer_params(args, model: nn.Module):
+    # taken from https://github.com/facebookresearch/SpanBERT/blob/0670d8b6a38f6714b85ea7a033f16bd8cc162676/code/run_tacred.py
+    param_optimizer = list(model.named_parameters())
+    no_decay = ['bias', 'ln_f.weight', 'ln_1.weight', 'ln_2.weight', 'ln_cross_attn']
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer
+                    if not any(nd in n for nd in no_decay)]},
+        {'params': [p for n, p in param_optimizer
+                    if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+
+    return optimizer_grouped_parameters
 
 
 def get_tokenizer(args):
