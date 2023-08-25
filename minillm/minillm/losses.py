@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 from torchtyping import TensorType
 
 from .data_types import PPORLBatch
-from .utils import whiten, get_entropy, get_x_entropy
+from .utils import whiten, get_entropy, get_x_entropy, get_log_probs
 
 from transformers import mpu
 
@@ -107,7 +107,19 @@ class Loss():
         
         return loss_exp_ent
 
-    def ppo_loss(self, batch: PPORLBatch):
+    def get_input_batch(self, ppo_batch: PPORLBatch, pt_batch):
+        query_tensors = ppo_batch.query_tensors
+        response_tensors = ppo_batch.response_tensors
+        ppo_input_batch = self.trainer.get_model_inputs(query_tensors, response_tensors)
+        pt_input_batch, _ = pt_batch
+        # merge batch
+        assert len(ppo_input_batch) == len(pt_input_batch), list(ppo_input_batch.keys())
+        input_batch = {}
+        for k in ppo_input_batch:
+            input_batch[k] = torch.cat([ppo_input_batch[k], pt_input_batch[k]], dim=0)
+        return input_batch
+
+    def ppo_loss(self, batch: PPORLBatch, logits):
         stats = {}
         query_tensors = batch.query_tensors
         response_tensors = batch.response_tensors
@@ -122,8 +134,21 @@ class Loss():
         
         response_length = response_tensors.shape[-1]
 
-        logits, logprobs = self.trainer.forward_ppo_model(query_tensors, response_tensors, inf_mask)
-                
+        start = query_tensors.size(1) - 1 # "-1" for the first generated token AS TARGET
+        end = query_tensors.size(1) + response_tensors.size(1) - 1 # "remove the last token that does not have target"
+
+        logits = logits / self.args.temperature
+        logits = logits[:, start:end]
+        if inf_mask is not None:
+            logits = logits.masked_fill(inf_mask, -float("inf"))
+            
+        tokens = torch.cat((query_tensors, response_tensors), dim=1)[
+            :, -self.trainer.max_length :
+        ]
+        mask = self.trainer.get_mask(tokens)[:, start:end]
+        
+        logprobs = get_log_probs(logits, response_tensors, mask, inf_mask, model_parallel=self.args.model_parallel)
+
         advantages = self._get_advantages_and_returns(
             old_rewards, response_length, mask
         )
@@ -166,12 +191,10 @@ class Loss():
         
         return loss, stats
 
-    def pt_loss(self, batch):
+    def pt_loss(self, batch, logits):
         stats = {}
         model_batch, no_model_batch = batch
         loss_mask = (no_model_batch["label"] != -100).int()
-        outputs = self.trainer.model(**model_batch, return_dict=True, use_cache=False)
-        logits = outputs.logits
         if self.args.model_parallel:
             lm_losses = mpu.parallel_cross_entropy(logits.contiguous().float(), no_model_batch["label"]).view(-1)
             lm_loss = (lm_losses * loss_mask.view(-1)).sum(-1) / loss_mask.view(-1).sum(-1)

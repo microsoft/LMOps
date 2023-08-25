@@ -24,9 +24,7 @@ def convert_to_single_emb(x, offset: int = 512):
 
 
 def preprocess_item(item, keep_features=True):
-    requires_backends(preprocess_item, ["Cython"])
-    if not is_cython_available():
-        raise ImportError("Graphormer preprocessing needs Cython (pyximport)")
+    requires_backends(preprocess_item, ["cython"])
 
     if keep_features and "edge_attr" in item.keys():  # edge_attr
         edge_attr = np.asarray(item["edge_attr"], dtype=np.int64)
@@ -131,6 +129,6 @@ class GraphormerDataCollator:
             else:  # binary classification
                 batch["labels"] = torch.from_numpy(np.concatenate([i["labels"] for i in features]))
         else:  # multi task classification, left to float to keep the NaNs
-            batch["labels"] = torch.from_numpy(np.stack([i["labels"] for i in features], dim=0))
+            batch["labels"] = torch.from_numpy(np.stack([i["labels"] for i in features], axis=0))
 
         return batch

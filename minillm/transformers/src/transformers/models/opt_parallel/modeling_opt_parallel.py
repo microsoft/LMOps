@@ -77,32 +77,21 @@ from ...mpu import gather_from_model_parallel_region
 from typing import Callable, Optional
 
 
-def print_rank(*args, rank=0, **kwargs):
-    if not dist.is_initialized() or dist.get_rank() == rank:
-        print(*args, **kwargs)
-
-
-def all_gather(t, dim=0, world_size=None, group=None):
-    if world_size is None:
-        world_size = dist.get_world_size()
-    all_t = [torch.zeros_like(t) for _ in range(world_size)]
-    dist.all_gather(all_t, t, group=group)
-    all_t = torch.cat(all_t, dim=dim)
-    return all_t
-
-
-def _make_causal_mask(input_ids_shape: torch.Size, dtype: torch.dtype, past_key_values_length: int = 0):
+# Copied from transformers.models.bart.modeling_bart._make_causal_mask
+def _make_causal_mask(
+    input_ids_shape: torch.Size, dtype: torch.dtype, device: torch.device, past_key_values_length: int = 0
+):
     """
     Make causal mask used for bi-directional self-attention.
     """
     bsz, tgt_len = input_ids_shape
-    mask = torch.full((tgt_len, tgt_len), torch.tensor(torch.finfo(dtype).min))
-    mask_cond = torch.arange(mask.size(-1))
+    mask = torch.full((tgt_len, tgt_len), torch.tensor(torch.finfo(dtype).min, device=device), device=device)
+    mask_cond = torch.arange(mask.size(-1), device=device)
     mask.masked_fill_(mask_cond < (mask_cond + 1).view(mask.size(-1), 1), 0)
     mask = mask.to(dtype)
 
     if past_key_values_length > 0:
-        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype), mask], dim=-1)
+        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype, device=device), mask], dim=-1)
     return mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_key_values_length)
 
 
@@ -332,7 +321,9 @@ class ParallelOPTAttention(nn.Module):
                     f"Attention mask should be of size {(bsz, 1, tgt_len, src_len)}, but is {attention_mask.size()}"
                 )
             attn_weights = attn_weights.view(bsz, self.num_heads_per_partition, tgt_len, src_len) + attention_mask
-            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
+            attn_weights = torch.max(
+                attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
+            )
             attn_weights = attn_weights.view(bsz * self.num_heads_per_partition, tgt_len, src_len)
 
         # upcast to fp32 if the weights are in fp16. Please see https://github.com/huggingface/transformers/pull/17437
@@ -425,9 +416,9 @@ class ParallelOPTDecoderLayer(nn.Module):
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
         layer_head_mask: Optional[torch.Tensor] = None,
+        past_key_value: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
         use_cache: Optional[bool] = False,
-        past_key_value: Optional[Tuple[torch.Tensor]] = None,
     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
         """
         Args:
@@ -585,8 +576,11 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
         combined_attention_mask = None
         if input_shape[-1] > 1:
             combined_attention_mask = _make_causal_mask(
-                input_shape, inputs_embeds.dtype, past_key_values_length=past_key_values_length
-            ).to(inputs_embeds.device)
+                input_shape,
+                inputs_embeds.dtype,
+                device=inputs_embeds.device,
+                past_key_values_length=past_key_values_length,
+            )
 
         if attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
@@ -677,19 +671,27 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
         else:
             raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
 
-        past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
-
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
 
+        batch_size, seq_length = input_shape
+        past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
+        # required mask seq length can be calculated via length of past
+        mask_seq_length = past_key_values_length + seq_length
+
         # embed positions
         if attention_mask is None:
-            attention_mask = torch.ones(inputs_embeds.shape[:2], dtype=torch.bool, device=inputs_embeds.device)
-        pos_embeds = self.embed_positions(attention_mask, past_key_values_length)
-
-        attention_mask = self._prepare_decoder_attention_mask(
+            attention_mask = torch.ones(batch_size, mask_seq_length, device=inputs_embeds.device)
+        elif attention_mask.shape[1] != mask_seq_length:
+            raise ValueError(
+                f"The provided attention mask has length {attention_mask.shape[1]}, but its length should be "
+                f"{mask_seq_length} (sum of the lengths of current and past inputs)"
+            )
+        causal_attention_mask = self._prepare_decoder_attention_mask(
             attention_mask, input_shape, inputs_embeds, past_key_values_length
         )
+        pos_embeds = self.embed_positions(attention_mask, past_key_values_length)
+
 
         if self.project_in is not None:
             inputs_embeds = self.project_in(inputs_embeds)
@@ -738,14 +740,14 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
                 layer_outputs = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(decoder_layer),
                     hidden_states,
-                    attention_mask,
+                    causal_attention_mask,
                     head_mask[idx] if head_mask is not None else None,
                     None,
                 )
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
-                    attention_mask=attention_mask,
+                    attention_mask=causal_attention_mask,
                     layer_head_mask=(head_mask[idx] if head_mask is not None else None),
                     past_key_value=past_key_value,
                     output_attentions=output_attentions,
@@ -991,6 +993,8 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
 
         loss = None
         # if labels is not None:
+        #     move labels to correct device to enable model parallelism
+        #     labels = labels.to(logits.device)
         #     # Shift so that tokens < n predict n
         #     shift_logits = logits[..., :-1, :].contiguous()
         #     shift_labels = labels[..., 1:].contiguous()

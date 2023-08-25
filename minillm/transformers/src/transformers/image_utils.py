@@ -35,6 +35,8 @@ from .utils.constants import (  # noqa: F401
     IMAGENET_DEFAULT_STD,
     IMAGENET_STANDARD_MEAN,
     IMAGENET_STANDARD_STD,
+    OPENAI_CLIP_MEAN,
+    OPENAI_CLIP_STD,
 )
 
 
@@ -60,6 +62,10 @@ ImageInput = Union[
 class ChannelDimension(ExplicitEnum):
     FIRST = "channels_first"
     LAST = "channels_last"
+
+
+def is_pil_image(img):
+    return is_vision_available() and isinstance(img, PIL.Image.Image)
 
 
 def is_valid_image(img):
@@ -113,7 +119,7 @@ def make_list_of_images(images, expected_ndims: int = 3) -> List[ImageInput]:
     if is_valid_image(images):
         if images.ndim == expected_ndims + 1:
             # Batch of images
-            images = [image for image in images]
+            images = list(images)
         elif images.ndim == expected_ndims:
             # Single image
             images = [images]

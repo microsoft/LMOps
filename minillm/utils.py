@@ -1,17 +1,36 @@
-from collections import defaultdict
 from typing import Dict
 import numpy as np
 import os
+import time
 import torch.distributed as dist
 from torch.distributed import get_rank
-import torch.nn as nn
 import random
 import torch
+import torch.nn as nn
 from datetime import timedelta
 import deepspeed
-import transformers.mpu as mpu
+from accelerate import load_checkpoint_and_dispatch, init_empty_weights
+
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    AutoConfig,
+    ParallelOPTForCausalLM,
+    ParallelLlamaForCausalLM,
+    ParallelGPTJForCausalLM,
+    ParallelGPT2LMHeadModel,
+    mpu,)
 
 
+parallel_model_map = {
+    "opt": ParallelOPTForCausalLM,
+    "gptj": ParallelGPTJForCausalLM,
+    "gpt2": ParallelGPT2LMHeadModel,
+    "llama": ParallelLlamaForCausalLM
+}
+
+
+# Logging
 def print_args(args):
     """Print arguments."""
 
@@ -32,6 +51,7 @@ def print_rank(*args, rank=0, **kwargs):
         print(*args, **kwargs)
 
 
+# Distributed
 def all_gather(t, dim=0, world_size=None, group=None, op="cat"):
     if world_size is None:
         world_size = dist.get_world_size()
@@ -44,6 +64,7 @@ def all_gather(t, dim=0, world_size=None, group=None, op="cat"):
     return all_t
 
 
+# Initialize
 def set_random_seed(seed, mp=False):
     """Set random seed for reproducability."""
     seed = dist.get_rank() + seed
@@ -106,6 +127,42 @@ def initialize(args):
         os.makedirs(args.save, exist_ok=True)
 
 
+# Load and save model
+def get_model(args, device):
+    config = AutoConfig.from_pretrained(args.model_path)
+    if args.dropout_path_rate is not None:
+        config.drop_path_rate = args.dropout_path_rate
+    
+    st_time = time.time()
+    if args.model_parallel:
+        config.is_model_parallel = True
+        with init_empty_weights():
+            model = parallel_model_map[args.model_type](config).half()
+        load_parallel(model, args.model_path)
+
+        if mpu.get_data_parallel_rank() == 0:
+            print(' > number of parameters on model parallel rank {}: {}'.format(
+                mpu.get_model_parallel_rank(),
+                sum([p.nelement() for p in model.parameters()])), flush=True)
+    else:
+        config.is_model_parallel = False
+        model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
+
+        if dist.get_rank() == 0:
+            print(' > number of parameters: {}'.format(
+                sum([p.nelement() for p in model.parameters()])), flush=True)
+        # model = DDP(model)
+        # NOTE: no need for DDP since deepspeed has done
+    if args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+    
+    ed_time = time.time()
+    
+    print_rank(f"Model load time: {ed_time - st_time}s")
+    
+    return model
+
+
 def get_optimizer_params(args, model: nn.Module):
     # taken from https://github.com/facebookresearch/SpanBERT/blob/0670d8b6a38f6714b85ea7a033f16bd8cc162676/code/run_tacred.py
     param_optimizer = list(model.named_parameters())
@@ -120,13 +177,20 @@ def get_optimizer_params(args, model: nn.Module):
     return optimizer_grouped_parameters
 
 
+def get_tokenizer(args):
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    if args.model_type in ["gpt2", "opt", "llama", "gptj"]:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    
+    return tokenizer
+
+
 def load_parallel(model, load_dir):
     mp_rank = mpu.get_model_parallel_rank()
     assert mpu.get_model_parallel_world_size() != 1
     checkpoint_name = os.path.join(load_dir, f"mp{mpu.get_model_parallel_world_size()}", f"pytorch_model_{mp_rank}.bin")
     assert os.path.exists(checkpoint_name), f"{checkpoint_name} does not exist."
-    sd = torch.load(checkpoint_name, map_location="cpu")
-    model.load_state_dict(sd, strict=True)
+    model = load_checkpoint_and_dispatch(model=model, checkpoint=checkpoint_name, device_map={"": torch.cuda.current_device()}, dtype=torch.float16)
     dist.barrier()
     print(f"Rank {get_rank()}: {checkpoint_name} loaded.")
 
