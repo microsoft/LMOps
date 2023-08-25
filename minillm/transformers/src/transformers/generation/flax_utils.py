@@ -37,8 +37,11 @@ from .configuration_utils import GenerationConfig
 from .flax_logits_process import (
     FlaxForcedBOSTokenLogitsProcessor,
     FlaxForcedEOSTokenLogitsProcessor,
+    FlaxForceTokensLogitsProcessor,
     FlaxLogitsProcessorList,
     FlaxMinLengthLogitsProcessor,
+    FlaxSuppressTokensAtBeginLogitsProcessor,
+    FlaxSuppressTokensLogitsProcessor,
     FlaxTemperatureLogitsWarper,
     FlaxTopKLogitsWarper,
     FlaxTopPLogitsWarper,
@@ -137,7 +140,7 @@ class FlaxGenerationMixin:
               `do_sample=False`
 
     You do not need to call any of the above methods directly. Pass custom parameter values to 'generate' instead. To
-    learn more about decoding strategies refer to the [text generation strategies guide](./generation_strategies).
+    learn more about decoding strategies refer to the [text generation strategies guide](../generation_strategies).
     """
 
     def prepare_inputs_for_generation(self, *args, **kwargs):
@@ -163,6 +166,50 @@ class FlaxGenerationMixin:
         }
         model_kwargs["encoder_outputs"] = self.encode(input_ids, params=params, return_dict=True, **encoder_kwargs)
         return model_kwargs
+
+    def _prepare_decoder_input_ids_for_generation(
+        self,
+        batch_size: int,
+        decoder_start_token_id: int = None,
+        bos_token_id: int = None,
+        model_kwargs: Optional[Dict[str, jnp.ndarray]] = None,
+    ) -> jnp.ndarray:
+        if model_kwargs is not None and "decoder_input_ids" in model_kwargs:
+            # Only use this arg if not None, otherwise just remove from model_kwargs
+            decoder_input_ids = model_kwargs.pop("decoder_input_ids")
+            if decoder_input_ids is not None:
+                return decoder_input_ids
+        decoder_start_token_id = self._get_decoder_start_token_id(decoder_start_token_id, bos_token_id)
+        return jnp.array(decoder_start_token_id, dtype="i4").reshape(1, -1).repeat(batch_size, axis=0)
+
+    def _get_decoder_start_token_id(self, decoder_start_token_id: int = None, bos_token_id: int = None) -> int:
+        # retrieve decoder_start_token_id for encoder-decoder models
+        # fall back to bos_token_id if necessary
+        decoder_start_token_id = (
+            decoder_start_token_id
+            if decoder_start_token_id is not None
+            else self.generation_config.decoder_start_token_id
+        )
+        bos_token_id = bos_token_id if bos_token_id is not None else self.generation_config.bos_token_id
+        if decoder_start_token_id is not None:
+            return decoder_start_token_id
+        elif (
+            hasattr(self.config, "decoder")
+            and hasattr(self.config.decoder, "decoder_start_token_id")
+            and self.config.decoder.decoder_start_token_id is not None
+        ):
+            return self.config.decoder.decoder_start_token_id
+        elif bos_token_id is not None:
+            return bos_token_id
+        elif (
+            hasattr(self.config, "decoder")
+            and hasattr(self.config.decoder, "bos_token_id")
+            and self.config.decoder.bos_token_id is not None
+        ):
+            return self.config.decoder.bos_token_id
+        raise ValueError(
+            "`decoder_start_token_id` or `bos_token_id` has to be defined for encoder-decoder generation."
+        )
 
     @staticmethod
     def _expand_to_num_beams(tensor, num_beams):
@@ -224,6 +271,7 @@ class FlaxGenerationMixin:
         prng_key: Optional[jnp.ndarray] = None,
         trace: bool = True,
         params: Optional[Dict[str, jnp.ndarray]] = None,
+        logits_processor: Optional[FlaxLogitsProcessorList] = None,
         **kwargs,
     ):
         r"""
@@ -244,6 +292,10 @@ class FlaxGenerationMixin:
                 considerably slower runtime.
             params (`Dict[str, jnp.ndarray]`, *optional*):
                 Optionally the model parameters can be passed. Can be useful for parallelized generation.
+            logits_processor (`FlaxLogitsProcessorList `, *optional*):
+                Custom logits processors that complement the default logits processors built from arguments and
+                generation config. If a logit processor is passed that is already created with the arguments or a
+                generation config an error is thrown. This feature is intended for advanced users.
             kwargs:
                 Ad hoc parametrization of `generate_config` and/or additional model-specific kwargs that will be
                 forwarded to the `forward` function of the model. If the model is an encoder-decoder model, encoder
@@ -277,6 +329,8 @@ class FlaxGenerationMixin:
         generation_config.validate()
         self._validate_model_kwargs(model_kwargs.copy())
 
+        logits_processor = logits_processor if logits_processor is not None else FlaxLogitsProcessorList()
+
         # set init values
         prng_key = prng_key if prng_key is not None else jax.random.PRNGKey(0)
 
@@ -306,12 +360,19 @@ class FlaxGenerationMixin:
                     "generation results, please set `padding_side='left'` when initializing the tokenizer."
                 )
 
+        batch_size = input_ids.shape[0]
+
         if self.config.is_encoder_decoder:
             # add encoder_outputs to model_kwargs
             if model_kwargs.get("encoder_outputs") is None:
                 model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(input_ids, params, model_kwargs)
             # prepare decoder_input_ids for generation
-            input_ids = jnp.ones((input_ids.shape[0], 1), dtype="i4") * generation_config.decoder_start_token_id
+            input_ids = self._prepare_decoder_input_ids_for_generation(
+                batch_size,
+                decoder_start_token_id=generation_config.decoder_start_token_id,
+                bos_token_id=generation_config.bos_token_id,
+                model_kwargs=model_kwargs,
+            )
 
         # Prepare `max_length` depending on other stopping criteria.
         input_ids_seq_length = input_ids.shape[-1]
@@ -324,15 +385,14 @@ class FlaxGenerationMixin:
                 UserWarning,
             )
         elif generation_config.max_new_tokens is not None:
-            generation_config.max_length = generation_config.max_new_tokens + input_ids_seq_length
             if not has_default_max_length:
-                logger.warn(
+                logger.warning(
                     f"Both `max_new_tokens` (={generation_config.max_new_tokens}) and `max_length`(="
                     f"{generation_config.max_length}) seem to have been set. `max_new_tokens` will take precedence. "
                     "Please refer to the documentation for more information. "
-                    "(https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)",
-                    UserWarning,
+                    "(https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)"
                 )
+            generation_config.max_length = generation_config.max_new_tokens + input_ids_seq_length
 
         if generation_config.min_length is not None and generation_config.min_length > generation_config.max_length:
             raise ValueError(
@@ -347,7 +407,11 @@ class FlaxGenerationMixin:
                 " increasing`max_new_tokens`."
             )
 
-        logits_processor = self._get_logits_processor(generation_config=generation_config)
+        logits_processor = self._get_logits_processor(
+            generation_config=generation_config,
+            input_ids_seq_length=input_ids_seq_length,
+            logits_processor=logits_processor,
+        )
 
         if not generation_config.do_sample and generation_config.num_beams == 1:
             return self._greedy_search(
@@ -383,10 +447,11 @@ class FlaxGenerationMixin:
                     model_kwargs["encoder_outputs"]["last_hidden_state"], num_beams=generation_config.num_beams
                 )
 
-            if "attention_mask" in model_kwargs:
-                model_kwargs["attention_mask"] = self._expand_to_num_beams(
-                    model_kwargs["attention_mask"], num_beams=generation_config.num_beams
-                )
+            for kwarg in ["attention_mask", "decoder_attention_mask"]:
+                if kwarg in model_kwargs:
+                    model_kwargs[kwarg] = self._expand_to_num_beams(
+                        model_kwargs[kwarg], num_beams=generation_config.num_beams
+                    )
 
             return self._beam_search(
                 input_ids,
@@ -398,6 +463,7 @@ class FlaxGenerationMixin:
                 logits_processor=logits_processor,
                 trace=trace,
                 params=params,
+                num_return_sequences=generation_config.num_return_sequences,
                 model_kwargs=model_kwargs,
             )
         else:
@@ -419,7 +485,12 @@ class FlaxGenerationMixin:
 
         return warpers
 
-    def _get_logits_processor(self, generation_config: GenerationConfig) -> FlaxLogitsProcessorList:
+    def _get_logits_processor(
+        self,
+        generation_config: GenerationConfig,
+        input_ids_seq_length: int,
+        logits_processor: Optional[FlaxLogitsProcessorList],
+    ) -> FlaxLogitsProcessorList:
         """
         This class returns a [`FlaxLogitsProcessorList`] list object that contains all relevant [`FlaxLogitsProcessor`]
         instances used to modify the scores of the language model head.
@@ -440,8 +511,50 @@ class FlaxGenerationMixin:
             processors.append(
                 FlaxForcedEOSTokenLogitsProcessor(generation_config.max_length, generation_config.forced_eos_token_id)
             )
+        if generation_config.suppress_tokens is not None:
+            processors.append(FlaxSuppressTokensLogitsProcessor(generation_config.suppress_tokens))
+        if generation_config.begin_suppress_tokens is not None:
+            begin_index = input_ids_seq_length
+            begin_index = (
+                begin_index
+                if (input_ids_seq_length > 1 or generation_config.forced_bos_token_id is None)
+                else begin_index + 1
+            )
+            if generation_config.forced_decoder_ids is not None and len(generation_config.forced_decoder_ids) > 0:
+                # generation starts after the last token that is forced
+                begin_index += generation_config.forced_decoder_ids[-1][0]
+            processors.append(
+                FlaxSuppressTokensAtBeginLogitsProcessor(generation_config.begin_suppress_tokens, begin_index)
+            )
+        if generation_config.forced_decoder_ids is not None:
+            forced_decoder_ids = [
+                [input_ids_seq_length + i[0] - 1, i[1]] for i in generation_config.forced_decoder_ids
+            ]
+            processors.append(FlaxForceTokensLogitsProcessor(forced_decoder_ids))
+        processors = self._merge_criteria_processor_list(processors, logits_processor)
 
         return processors
+
+    def _merge_criteria_processor_list(
+        self,
+        default_list: FlaxLogitsProcessorList,
+        custom_list: FlaxLogitsProcessorList,
+    ) -> FlaxLogitsProcessorList:
+        if len(custom_list) == 0:
+            return default_list
+        for default in default_list:
+            for custom in custom_list:
+                if type(custom) is type(default):
+                    object_type = "logits processor"
+                    raise ValueError(
+                        f"A custom {object_type} of type {type(custom)} with values {custom} has been passed to"
+                        f" `generate`, but it has already been created with the values {default}. {default} has been"
+                        " created by passing the corresponding arguments to generate or by the model's config default"
+                        f" values. If you just want to change the default values of {object_type} consider passing"
+                        f" them as arguments to `generate` instead of using a custom {object_type}."
+                    )
+        default_list.extend(custom_list)
+        return default_list
 
     def _greedy_search(
         self,
@@ -637,6 +750,7 @@ class FlaxGenerationMixin:
         logits_processor: Optional[FlaxLogitsProcessorList] = None,
         trace: bool = True,
         params: Optional[Dict[str, jnp.ndarray]] = None,
+        num_return_sequences: Optional[int] = None,
         model_kwargs: Optional[Dict[str, jnp.ndarray]] = None,
     ):
         """
@@ -681,6 +795,9 @@ class FlaxGenerationMixin:
         eos_token_id = eos_token_id if eos_token_id is not None else self.generation_config.eos_token_id
         length_penalty = length_penalty if length_penalty is not None else self.generation_config.length_penalty
         early_stopping = early_stopping if early_stopping is not None else self.generation_config.early_stopping
+        num_return_sequences = (
+            num_return_sequences if num_return_sequences is not None else self.generation_config.num_return_sequences
+        )
 
         batch_size, num_beams, cur_len = input_ids.shape
 
@@ -709,8 +826,9 @@ class FlaxGenerationMixin:
             model_kwargs["encoder_outputs"]["last_hidden_state"] = flatten_beam_dim(
                 model_kwargs["encoder_outputs"]["last_hidden_state"]
             )
-        if "attention_mask" in model_kwargs:
-            model_kwargs["attention_mask"] = flatten_beam_dim(model_kwargs["attention_mask"])
+        for kwarg in ["attention_mask", "decoder_attention_mask"]:
+            if kwarg in model_kwargs:
+                model_kwargs[kwarg] = flatten_beam_dim(model_kwargs[kwarg])
 
         # initialize model specific kwargs
         model_kwargs = self.prepare_inputs_for_generation(flatten_beam_dim(input_ids), max_length, **model_kwargs)
@@ -883,8 +1001,8 @@ class FlaxGenerationMixin:
         sequences = jnp.where(none_finished[:, None, None], state.sequences, state.running_sequences)
         scores = jnp.where(none_finished[:, None], state.scores, state.running_scores)
 
-        # take best beam for each batch
-        sequences = sequences[:, 0]
-        scores = scores[:, 0]
+        # Take best beams for each batch (the score is sorted in descending order)
+        sequences = flatten_beam_dim(sequences[:, :num_return_sequences, :])
+        scores = flatten_beam_dim(scores[:, :num_return_sequences])
 
         return FlaxBeamSearchOutput(sequences=sequences, scores=scores)
