@@ -8,7 +8,6 @@
 ## `output-read-compre` Folder
 
 - This folder contains the output reading comprehension texts corresponding to the input raw texts.
-- **NOTE:** If you concatenate multiple data examples together as a single input for the language model, please wrap each reading comprehension text using templates like this: `{"text": "READCOMPRE"}`, where `READCOMPRE` is one piece of reading comprehension text. This format resembles the format of a dictionary, explicitly separating each reading comprehension text from others. This allows the model to focus on the context of the current text when training on comprehension tasks.
 
 ## `domain.spm` and `general.spm`
 
