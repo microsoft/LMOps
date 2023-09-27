@@ -1,0 +1,22 @@
+Read the beginning of an article about biomedicine: The results of previous studies of the relation between the surface electrocardiogram and cellular transmembrane potentials have suggested that the T wave configuration of the ECG is the result of a difference in the duration of endocardial and epicardial action potentials. Ventricular hypertrophy induced by renal hypertension in rats is associated with lengthening of action potential duration and a reproducible decrease in T wave magnitude. Therefore, this model was used to study the relation between the surface T wave configuration and regional differences in action potential duration. ECGs were recorded from hypertensive (HBP) and sham-operated (SHAM) rats.
+
+Your task is to add the subsequent part. The hearts from these animals were removed and transmembrane action potentials were recorded by standard microelectrode techniques from endocardial and epicardial preparations. We found that the normally peaked T waves seen in the ECG of SHAM rats was reduced by 35% in the ECG of HBP rats. This reduction of T wave magnitude was associated with similar duration of epicardial and endocardial action potentials in HBP rats. However, peaked T wave in SHAM ECG was not accompanied by a significant disparity in the duration of the epicardial and endocardial action potentials. Thus, there is no simple, consistent correlation between surface T wave configuration and regional differences in intracellular action potential duration in rats.
+
+Briefly summarize this text. Summary: Transmembrane action potentials and the electrocardiogram in rats with renal hypertension.
+How would one answer these questions in the biomedicine domain:
+
+Q: What happens after "Ventricular hypertrophy induced by renal hypertension in rats is associated with lengthening of action potential duration and a reproducible decrease in T wave magnitude."? A: This model was used to study the relation between the surface T wave configuration and regional differences in action potential duration.
+
+Question: If "Ventricular hypertrophy induced by renal hypertension in rats is associated with lengthening of action potential duration and a reproducible decrease in T wave magnitude.", does this mean that "This model was used to study the relation between the surface T wave configuration and regional differences in action potential duration."?
+Answer: Yes
+
+Question: If "This reduction of T wave magnitude was associated with similar duration of epicardial and endocardial action potentials in HBP rats.", does this mean that "Peaked T wave in SHAM ECG was not accompanied by a significant disparity in the duration of the epicardial and endocardial action potentials."?
+Answer: No
+
+Here is a sentence: "This reduction of T wave magnitude was associated with similar duration of epicardial and endocardial action potentials in HBP rats.". Now, provide a sentence that contradicts its meaning. Peaked T wave in SHAM ECG was not accompanied by a significant disparity in the duration of the epicardial and endocardial action potentials.
+
+Sentence: The hearts from these animals were removed and transmembrane action potentials were recorded by standard microelectrode techniques from endocardial and epicardial preparations.
+What are the keywords about biomedicine in this sentence? epicardial, transmembrane, microelectrode
+
+Sentence: Ventricular hypertrophy induced by renal hypertension in rats is associated with lengthening of action potential duration and a reproducible decrease in T wave magnitude.
+What are the keywords about biomedicine in this sentence? lengthening, hypertrophy, hypertension
