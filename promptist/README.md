@@ -1,6 +1,7 @@
 # Promptist: reinforcement learning for automatic prompt optimization
 
 ## News
+- Sept, 2023: Promptist was accepted by NeurIPS 2023 as Spotlight
 - [Demo Release] Dec, 2022: [Demo at Hugging Face Space](https://aka.ms/promptist-demo)
 - [Model Release] Dec, 2022: [link](#load-pretrained-model-for-stable-diffusion-v14)
 - [Paper Release] Dec, 2022: [Optimizing Prompts for Text-to-Image Generation](https://aka.ms/promptist-paper)
@@ -83,4 +84,16 @@ We release the data for SFT and RL at [Google Drive](https://drive.google.com/fi
 python ./diffusers_examples/quick-start.py
 
 accelerate launch --multi_gpu --machine_rank ${OMPI_COMM_WORLD_RANK} --main_process_ip ${MASTER_ADDR} --main_process_port ${MASTER_PORT} --num_machines 4 --num_processes 32 ./diff_prompter/ppo_prompter.py --data /data_path --gpt_path /supervised_finetuned_gpt_path --trl_config ./diff_prompter/configs/ppo_config_a100_coco_bsz256_kl0.2.yml --checkpoint_dir /ckpt_dir
+```
+
+## Reference
+
+If you find this repository useful, please consider citing our work:
+```
+@inproceedings{promptist,
+  title={Optimizing Prompts for Text-to-Image Generation},
+  author={Yaru Hao and Zewen Chi and Li Dong and Furu Wei},
+  booktitle={Neural Information Processing Systems},
+  year={2023}
+}
 ```
