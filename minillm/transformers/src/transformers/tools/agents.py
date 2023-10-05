@@ -23,6 +23,7 @@ from typing import Dict
 
 import requests
 from huggingface_hub import HfFolder, hf_hub_download, list_spaces
+import litellm
 
 from ..models.auto import AutoTokenizer
 from ..utils import is_openai_available, is_torch_available, logging
@@ -434,7 +435,7 @@ class OpenAiAgent(Agent):
             return self._completion_generate([prompt], stop)[0]
 
     def _chat_generate(self, prompt, stop):
-        result = openai.ChatCompletion.create(
+        result = litellm.completion(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
