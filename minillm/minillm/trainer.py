@@ -232,7 +232,7 @@ class PPOTrainer():
         self.global_iter_count = 1
         self.nth_evaluation = 0
 
-        # self.evaluate()
+        self.evaluate()
 
         print_rank("Total Steps:", self.total_steps, "Epochs:", self.args.epochs)
         lm_epochs = 0        
@@ -523,8 +523,11 @@ class PPOTrainer():
         all_kd_losses = []
         for batch in tqdm(self.eval_lm_dataloader, desc="LM Evaluation", disable=(not get_rank() == 0)):
             self.eval_lm_pipeline.move_to_device(*batch, self.device)
+            model_batch, _ = batch
+            outputs = self.model(**model_batch, return_dict=True, use_cache=False)
+            logits = outputs.logits
             with torch.no_grad():
-                _, stats = self.losses.pt_loss(batch)
+                _, stats = self.losses.pt_loss(batch, logits)
                 all_pt_losses.append(stats["pt_loss"])
                 all_lm_losses.append(stats["lm_loss"])
                 all_kd_losses.append(stats["ds_loss"])
