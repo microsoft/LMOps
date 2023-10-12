@@ -16,6 +16,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="gpt2-medium"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
+# CKPT="gpt2-medium" # download automatically
 # data
 DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
 # hp

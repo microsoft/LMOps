@@ -10,3 +10,5 @@ pip3 install torchtyping
 pip3 install rich
 pip3 install accelerate
 pip3 install datasets
+pip3 install sentencepiece
+pip3 install protobuf==3.20.3
