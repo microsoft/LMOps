@@ -16,6 +16,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="opt-1.3B"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
+# CKPT="facebook/opt-1.3b" # download automatically
 TEACHER_CKPT_NAME="13B-sft"
 TEACHER_CKPT="${BASE_PATH}/results/opt/train/sft/opt-13B/"
 MP_SIZE=4

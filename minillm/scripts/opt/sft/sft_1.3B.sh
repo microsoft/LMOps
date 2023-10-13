@@ -16,6 +16,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=${1-"/home/MiniLLM"}
 CKPT_NAME="opt-1.3B"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
+# CKPT="facebook/opt-1.3b" # download automatically
 # data
 DATA_DIR="${BASE_PATH}/processed_data/dolly/full/opt/"
 # hp
