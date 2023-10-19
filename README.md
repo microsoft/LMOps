@@ -8,6 +8,7 @@ LMOps is a research initiative on fundamental research and technology for buildi
 - LLM Accelerator (Faster Inference): [Lossless Acceleration of LLMs](https://arxiv.org/abs/2304.04487)
 - LLM Customization: [Adapt LLM to domains](https://arxiv.org/pdf/2309.09530.pdf)
 - Fundamentals: [Understanding In-Context Learning](https://arxiv.org/abs/2212.10559)
+- LLM Alignment: [Alignment via LLM feedback]()
 
 ## Links
 
@@ -15,6 +16,7 @@ LMOps is a research initiative on fundamental research and technology for buildi
 - [microsoft/torchscale](https://github.com/microsoft/torchscale): Transformers at (any) Scale
 
 ## News
+- [Paper Release] Oct, 2023: [Tuna: Instruction Tuning using Feedback from Large Language Models]() (EMNLP 2023)
 - [Paper Release] Oct, 2023: [Automatic Prompt Optimization with "Gradient Descent" and Beam Search](https://arxiv.org/abs/2305.03495) (EMNLP 2023)
 - [Paper Release] July, 2023: [Learning to Retrieve In-Context Examples for Large Language Models](https://arxiv.org/abs/2307.07164)
 - [Paper Release] April, 2023: [Inference with Reference: Lossless Acceleration of Large Language Models](https://arxiv.org/abs/2304.04487)
