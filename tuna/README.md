@@ -8,6 +8,9 @@
 
 This is the repo for the paper [Tuna: Instruction Tuning using Feedback from Large Language Models]() (EMNLP 2023).
 
+![Tuna](./tuna.png)
+
+
 - We propose finetuning an instruction-tuned LLM using our novel **probabilistic ranking** and **contextual ranking** approaches to increase the likelihood of generating better responses.
 
 - Probabilistic ranking enables the instruction-tuned model to inherit the relative rankings of high-quality and low-quality responses from the teacher LLM (e.g., `text-davinci-003`).
