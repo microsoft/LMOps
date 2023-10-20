@@ -5,10 +5,10 @@ LMOps is a research initiative on fundamental research and technology for buildi
 
 - Better Prompts: [Automatic Prompt Optimization](https://arxiv.org/abs/2305.03495), [Promptist](https://arxiv.org/abs/2212.09611), [Extensible prompts](https://arxiv.org/abs/2212.00616), [Universal prompt retrieval](https://arxiv.org/abs/2303.08518), [LLM Retriever](https://arxiv.org/abs/2307.07164)
 - Longer Context: [Structured prompting](https://arxiv.org/abs/2212.06713), [Length-Extrapolatable Transformers](https://arxiv.org/abs/2212.10554)
+- LLM Alignment: [Alignment via LLM feedback]()
 - LLM Accelerator (Faster Inference): [Lossless Acceleration of LLMs](https://arxiv.org/abs/2304.04487)
 - LLM Customization: [Adapt LLM to domains](https://arxiv.org/pdf/2309.09530.pdf)
 - Fundamentals: [Understanding In-Context Learning](https://arxiv.org/abs/2212.10559)
-- LLM Alignment: [Alignment via LLM feedback]()
 
 ## Links
 
