@@ -8,7 +8,9 @@
 
 This is the repo for the paper [Tuna: Instruction Tuning using Feedback from Large Language Models]() (EMNLP 2023).
 
-![Tuna](tuna.jpg "Tuna")
+<p align='center'>
+    <img src="./tuna.png" width="600">
+</p>
 
 
 - We propose finetuning an instruction-tuned LLM using our novel **probabilistic ranking** and **contextual ranking** approaches to increase the likelihood of generating better responses.
