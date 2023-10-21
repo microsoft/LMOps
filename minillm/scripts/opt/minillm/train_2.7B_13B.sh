@@ -49,7 +49,7 @@ OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
 OPTS+=" --dev-num 1000"
 OPTS+=" --num-workers 0"
 # hp
-OPTS+=" --epochs 80000"
+OPTS+=" --epochs 10"
 OPTS+=" --total-iters 5000"
 OPTS+=" --kd-ratio 0.5"
 OPTS+=" --batch-size ${BATCH_SIZE}"
