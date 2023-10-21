@@ -24,6 +24,8 @@ from utils import print_args, initialize, load_parallel, get_tokenizer
 
 from minillm import train, Reward
 
+from peft import PeftModel
+
 
 def get_teacher_model(args, device):
     config = AutoConfig.from_pretrained(args.teacher_model_path)
@@ -36,7 +38,18 @@ def get_teacher_model(args, device):
     else:
         config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
-    
+
+        if args.peft is not None:
+            if args.peft == "lora":
+                assert args.teacher_peft_path is not None
+                model = PeftModel.from_pretrained(model, args.peft_path)
+            else:
+                raise NotImplementedError
+        else:
+            if dist.get_rank() == 0:
+                print(' > number of parameters: {}'.format(
+                    sum([p.nelement() for p in model.parameters()])), flush=True)
+
     model.eval()
 
     return model

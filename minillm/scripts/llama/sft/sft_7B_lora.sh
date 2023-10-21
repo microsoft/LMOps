@@ -14,39 +14,35 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"/home/MiniLLM"}
-CKPT_NAME="gpt2-medium"
+CKPT_NAME="llama-7B"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
-# CKPT="gpt2-medium" # download automatically
-TEACHER_CKPT_NAME="xlarge-sft"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/gpt2-xlarge/"
 # data
-DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
+DATA_DIR="${BASE_PATH}/processed_data/dolly/full/llama/"
 # hp
-BATCH_SIZE=2
-LR=0.0001
+BATCH_SIZE=4
+LR=0.0005
 GRAD_ACC=1
 EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2/train/kd"
+SAVE_PATH="${BASE_PATH}/results/llama/train/sft"
 # seed
-SEED=10
+SEED=20
+SEED_ORDER=10
 
 
 OPTS=""
 # model
 OPTS+=" --base-path ${BASE_PATH}"
 OPTS+=" --model-path ${CKPT}"
-OPTS+=" --teacher-model-path ${TEACHER_CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
-OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
-OPTS+=" --teacher-model-fp16"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
-# OPTS+=" --gradient-checkpointing"
+OPTS+=" --model-type llama"
+OPTS+=" --gradient-checkpointing"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
-OPTS+=" --num-workers 4"
+OPTS+=" --num-workers 0"
 OPTS+=" --dev-num 1000"
 # hp
 OPTS+=" --lr ${LR}"
@@ -58,7 +54,6 @@ OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
 OPTS+=" --epochs 20"
-OPTS+=" --kd-ratio 0.5"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
@@ -69,15 +64,18 @@ OPTS+=" --eval-gen"
 OPTS+=" --save-interval -1"
 OPTS+=" --eval-interval -1"
 OPTS+=" --log-interval 4"
-OPTS+=" --mid-log-num -1"
+OPTS+=" --mid-log-num 1"
 OPTS+=" --save ${SAVE_PATH}"
+# lora
+OPTS+=" --peft lora"
 # seed
 OPTS+=" --seed ${SEED}"
+OPTS+=" --seed-order ${SEED_ORDER}"
 # deepspeed
 OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2.json"
 # type
-OPTS+=" --type kd"
+OPTS+=" --type lm"
 # gen
 OPTS+=" --do-sample"
 OPTS+=" --top-k 0"

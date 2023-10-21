@@ -2,21 +2,16 @@ import torch.nn as nn
 from transformers import (
     AutoConfig,)
 
-from .utils import get_model
+from utils import get_model
 
 
 class PPOModel(nn.Module):
-    def __init__(
-        self,
-        model_path: str,
-        model_type: str,
-        model_parallel=False,
-        gradient_checkpointing=False,
-    ):
+    def __init__(self, args, device):
         super().__init__()
-        self.model_parallel = model_parallel
-        self.config = AutoConfig.from_pretrained(model_path)
-        self.base_model = get_model(model_path, model_type, model_parallel, gradient_checkpointing)
+        self.model_parallel = args.model_parallel
+        self.config = AutoConfig.from_pretrained(args.model_path)
+        self.base_model = get_model(args, device)
+        self.base_model.eval() # no dropout for RL
 
     def forward(self, **x):
         base_model_outputs = self.base_model(**x)

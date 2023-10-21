@@ -12,3 +12,4 @@ pip3 install accelerate
 pip3 install datasets
 pip3 install sentencepiece
 pip3 install protobuf==3.20.3
+pip3 install peft

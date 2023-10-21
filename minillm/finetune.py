@@ -28,7 +28,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from arguments import get_args
 
 from data_utils.lm_datasets import LMTrainDataset
-from utils import get_optimizer_params, print_args, initialize
+from utils import get_optimizer_params, get_optimizer_params_peft, print_args, initialize
 from utils import print_rank, get_rank
 from utils import save_rank
 from utils import all_gather
@@ -38,6 +38,8 @@ from utils import get_tokenizer, get_model, parallel_model_map
 from accelerate import init_empty_weights
 
 from rouge_metric import compute_metrics
+
+from peft import PeftModel
 
 torch.set_num_threads(4)
 
@@ -53,7 +55,17 @@ def get_teacher_model(args, device):
     else:
         config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
-    
+
+        if args.peft is not None and args.teacher_peft_path is not None:
+            if args.peft == "lora":
+                model = PeftModel.from_pretrained(model, args.peft_path)
+            else:
+                raise NotImplementedError
+        else:
+            if dist.get_rank() == 0:
+                print(' > number of parameters: {}'.format(
+                    sum([p.nelement() for p in model.parameters()])), flush=True)
+
     model.eval()
     
     return model
@@ -66,7 +78,10 @@ def get_optimizer(args, model):
     while isinstance(model, DDP):
         model = model.module
 
-    param_groups = get_optimizer_params(args, model)
+    if args.peft is not None:
+        param_groups = get_optimizer_params_peft(args, model)
+    else:
+        param_groups = get_optimizer_params(args, model)
 
     # Use AdamW.
     optimizer = AdamW(param_groups, lr=args.lr, weight_decay=args.weight_decay)
@@ -319,9 +334,8 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                     if dist.get_rank() == 0:
                         os.makedirs(save_dir_path, exist_ok=True)
                         print_rank(f"Model save to {save_dir_path}")
-                        model.module.config.to_json_file(os.path.join(save_dir_path, "config.json"))
                         tokenizer.save_pretrained(save_dir_path)
-                        torch.save(model.module.state_dict(), os.path.join(save_dir_path, "pytorch_model.bin"))
+                        model.module.save_pretrained(save_dir_path)
                 dist.barrier()
 
             # Evaluation
@@ -522,5 +536,4 @@ def main():
         
     
 if __name__ == "__main__":
-    print(os.environ["CODE_BASE"])
     main()
