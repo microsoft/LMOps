@@ -6,7 +6,7 @@
 -----
 ### Overview
 
-This is the repo for the paper [Tuna: Instruction Tuning using Feedback from Large Language Models]() (EMNLP 2023).
+This is the repo for the paper [Tuna: Instruction Tuning using Feedback from Large Language Models](https://arxiv.org/pdf/2310.13385.pdf) (EMNLP 2023).
 
 <p align='center'>
     <img src="./tuna.png" width="600">
