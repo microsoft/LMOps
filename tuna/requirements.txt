@@ -1,0 +1,11 @@
+numpy
+rouge_score
+fire
+openai
+sentencepiece
+wandb
+deepspeed 
+transformers 
+accelerate
+tensorboardX
+datasets
