@@ -14,18 +14,20 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"/home/MiniLLM"}
-CKPT_NAME="medium-init"
-CKPT="${BASE_PATH}/results/gpt2/train/minillm_init/gpt2-medium"
-TEACHER_CKPT_NAME="xlarge-sft"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/gpt2-xlarge/"
+CKPT_NAME="llama-7B"
+CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
+PEFT_CKPT_NAME="lora-7B-init"
+PEFT_CKPT="${BASE_PATH}/results/llama/train/${PEFT_CKPT_NAME}/"
+TEACHER_CKPT_NAME="13B-sft"
+TEACHER_CKPT="${BASE_PATH}/results/llama/train/sft/llama-13B/"
 # data
-PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/gpt2/"
-LM_DATA_DIR="${BASE_PATH}/processed_data/openwebtext/gpt2/512/10M/"
+PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/llama/"
+LM_DATA_DIR="${BASE_PATH}/processed_data/roberta/llama/512/20M/"
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2/train/minillm/"
+SAVE_PATH="${BASE_PATH}/results/llama/train/minillm/"
 # hp
 GRAD_ACC=2
-BATCH_SIZE=2
+BATCH_SIZE=8
 CHUNK_SIZE=8
 
 
@@ -37,8 +39,9 @@ OPTS+=" --teacher-model-path ${TEACHER_CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
+OPTS+=" --model-type llama"
 OPTS+=" --teacher-model-fp16"
-# OPTS+=" --gradient-checkpointing"
+OPTS+=" --gradient-checkpointing"
 # data
 OPTS+=" --prompt-data-dir ${PROMPT_DATA_DIR}"
 OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
@@ -55,6 +58,7 @@ OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
 OPTS+=" --max-length 512"
 OPTS+=" --max-prompt-length 256"
 OPTS+=" --warmup-iters 100"
+OPTS+=" --scheduler-name cosine_trm"
 # runtime
 OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --seed 10"
@@ -64,10 +68,14 @@ OPTS+=" --save-interval 500"
 OPTS+=" --eval-interval 100"
 OPTS+=" --log-interval 16"
 OPTS+=" --mid-log-num 1"
+# lora
+OPTS+=" --peft lora"
+OPTS+=" --peft-name ${PEFT_CKPT_NAME}"
+OPTS+=" --peft-path ${PEFT_CKPT}"
 # ppo
 OPTS+=" --type minillm"
 OPTS+=" --ppo-epochs 4"
-OPTS+=" --num-rollouts 16"
+OPTS+=" --num-rollouts 64"
 OPTS+=" --chunk-size ${CHUNK_SIZE}"
 # minillm
 OPTS+=" --length-norm"
