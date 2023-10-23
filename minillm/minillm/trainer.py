@@ -64,7 +64,7 @@ class PPOTrainer():
             self.dp_rank = dist.get_rank()
             self.dp_group = None
 
-        self.model = PPOModel(args.model_path, args.model_type, args.model_parallel, args.gradient_checkpointing)
+        self.model = PPOModel(args, self.device)
         if args.model_parallel:
             if mpu.get_data_parallel_rank() == 0:
                 print(' > number of parameters on model parallel rank {}: {}M'.format(

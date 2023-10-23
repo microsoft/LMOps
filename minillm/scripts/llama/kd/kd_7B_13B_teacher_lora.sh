@@ -14,22 +14,24 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"/home/MiniLLM"}
-CKPT_NAME="gpt2-medium"
+CKPT_NAME="llama-7B"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
-# CKPT="gpt2-medium" # download automatically
-TEACHER_CKPT_NAME="xlarge-sft"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/gpt2-xlarge/"
+TEACHER_CKPT_NAME="llama-13B"
+TEACHER_CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
+TEACHER_PEFT_CKPT_NAME="lora-13B"
+TEACHER_PEFT_CKPT="${BASE_PATH}/results/llama/train/${TEACHER_PEFT_CKPT_NAME}/"
+MP_SIZE=4
 # data
-DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
+DATA_DIR="${BASE_PATH}/processed_data/dolly/full/${TEACHER_CKPT_NAME}/"
 # hp
-BATCH_SIZE=2
-LR=0.0001
+BATCH_SIZE=8
+LR=0.00001
 GRAD_ACC=1
 EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2/train/kd"
+SAVE_PATH="${BASE_PATH}/results/llama/train/kd"
 # seed
 SEED=10
 
@@ -43,7 +45,10 @@ OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
 OPTS+=" --teacher-model-fp16"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
-# OPTS+=" --gradient-checkpointing"
+OPTS+=" --model-type llama"
+OPTS+=" --gradient-checkpointing"
+OPTS+=" --model-parallel"
+OPTS+=" --model-parallel-size ${MP_SIZE}"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --num-workers 4"
@@ -57,7 +62,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs 20"
+OPTS+=" --epochs 10"
 OPTS+=" --kd-ratio 0.5"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
@@ -71,6 +76,10 @@ OPTS+=" --eval-interval -1"
 OPTS+=" --log-interval 4"
 OPTS+=" --mid-log-num -1"
 OPTS+=" --save ${SAVE_PATH}"
+# lora
+OPTS+=" --peft lora"
+OPTS+=" --teacher-peft-name ${TEACHER_PEFT_CKPT_NAME}"
+OPTS+=" --teacher-peft-path ${TEACHER_PEFT_CKPT}"
 # seed
 OPTS+=" --seed ${SEED}"
 # deepspeed

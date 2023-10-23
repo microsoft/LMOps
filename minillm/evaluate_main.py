@@ -9,10 +9,11 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
+import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
 import json
-from utils import print_rank, save_rank
+from utils import print_rank, save_rank, all_gather
 
 from rouge_metric import compute_metrics
 
@@ -33,9 +34,11 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
     if args.model_parallel:
         dp_world_size = mpu.get_data_parallel_world_size()
         dp_rank = mpu.get_data_parallel_rank()
+        dp_group = mpu.get_data_parallel_group()
     else:
         dp_world_size = dist.get_world_size()
         dp_rank = dist.get_rank()
+        dp_group = None
     
     sampler = DistributedSampler(dataset, shuffle=False, drop_last=False, rank=dp_rank, num_replicas=dp_world_size)
     dataloader = DataLoader(
@@ -101,11 +104,27 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
             )
             full_ids = gen_out.sequences
             response_ids = full_ids[:, query_ids.size(1):] # remove prompt (may include start token)
-            all_query_ids.extend(query_ids)
-            all_response_ids.extend(response_ids)
+            
+            query_ids = F.pad(query_ids, (args.max_prompt_length-query_ids.size(1), 0, 0, 0), value=tokenizer.pad_token_id)
+            response_ids = F.pad(response_ids, (0, args.max_length-args.max_prompt_length-response_ids.size(1), 0, 0), value=tokenizer.pad_token_id)
+            
+            all_query_ids.append(query_ids)
+            all_response_ids.append(response_ids)
 
     all_lm_losses = torch.cat(all_lm_losses)
-    mean_lm_loss = all_lm_losses.mean().item()
+    mean_lm_loss = all_lm_losses.mean()
+    dist.all_reduce(mean_lm_loss, dist.ReduceOp.SUM, group=dp_group)
+    mean_lm_loss = mean_lm_loss.item() / dp_world_size
+        
+    all_query_ids = torch.cat(all_query_ids)
+    all_query_ids = all_gather(all_query_ids, dim=1, group=dp_group, world_size=dp_world_size, op="stack")
+    all_query_ids = all_query_ids.view(-1, all_query_ids.size(-1))
+    all_query_ids = all_query_ids[:len(dataset)]
+    
+    all_response_ids = torch.cat(all_response_ids)
+    all_response_ids = all_gather(all_response_ids, dim=1, group=dp_group, world_size=dp_world_size, op="stack")
+    all_response_ids = all_response_ids.view(-1, all_response_ids.size(-1))
+    all_response_ids = all_response_ids[:len(dataset)]
         
     return (
         mean_lm_loss,

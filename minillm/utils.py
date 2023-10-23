@@ -10,6 +10,8 @@ import torch.nn as nn
 from datetime import timedelta
 import deepspeed
 from accelerate import load_checkpoint_and_dispatch, init_empty_weights
+from peft import get_peft_model, LoraConfig, TaskType, PeftModel
+
 
 from transformers import (
     AutoModelForCausalLM,
@@ -148,9 +150,23 @@ def get_model(args, device):
         config.is_model_parallel = False
         model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
 
-        if dist.get_rank() == 0:
-            print(' > number of parameters: {}'.format(
-                sum([p.nelement() for p in model.parameters()])), flush=True)
+        if args.peft is not None:
+            if args.peft == "lora":
+                model.enable_input_require_grads()
+                if args.peft_path is not None:
+                    model = PeftModel.from_pretrained(model, args.peft_path)
+                else:
+                    peft_config = LoraConfig(
+                        task_type=TaskType.CAUSAL_LM, inference_mode=(not args.do_train), r=args.peft_lora_r, lora_alpha=args.peft_lora_alpha, lora_dropout=args.peft_lora_dropout
+                    )
+                    model = get_peft_model(model, peft_config)
+                model.print_trainable_parameters()
+            else:
+                raise NotImplementedError
+        else:
+            if dist.get_rank() == 0:
+                print(' > number of parameters: {}'.format(
+                    sum([p.nelement() for p in model.parameters()])), flush=True)
         # model = DDP(model)
         # NOTE: no need for DDP since deepspeed has done
     if args.gradient_checkpointing:
@@ -172,6 +188,16 @@ def get_optimizer_params(args, model: nn.Module):
                     if not any(nd in n for nd in no_decay)]},
         {'params': [p for n, p in param_optimizer
                     if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+
+    return optimizer_grouped_parameters
+
+
+def get_optimizer_params_peft(args, model: nn.Module):
+    # taken from https://github.com/facebookresearch/SpanBERT/blob/0670d8b6a38f6714b85ea7a033f16bd8cc162676/code/run_tacred.py
+    param_optimizer = list(model.named_parameters())
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if p.requires_grad]},
     ]
 
     return optimizer_grouped_parameters

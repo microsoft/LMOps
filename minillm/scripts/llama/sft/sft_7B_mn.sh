@@ -36,6 +36,7 @@ OPTS+=" --base-path ${BASE_PATH}"
 OPTS+=" --model-path ${CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
+OPTS+=" --n-nodes ${NNODES}"
 OPTS+=" --model-type llama"
 OPTS+=" --gradient-checkpointing"
 # data
@@ -69,7 +70,8 @@ OPTS+=" --seed ${SEED}"
 OPTS+=" --seed-order ${SEED_ORDER}"
 # deepspeed
 OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2.json"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2_offload.json"
+# OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2.json"
 # type
 OPTS+=" --type lm"
 # gen
@@ -88,4 +90,4 @@ CMD="deepspeed ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
 echo ${CMD}
 echo "PYTHONPATH=${PYTHONPATH}"
 mkdir -p ${SAVE_PATH}
-CODE_BASE=HF ${CMD}
+${CMD}
