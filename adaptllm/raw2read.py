@@ -6,8 +6,9 @@ from tqdm.contrib.concurrent import process_map
 from utils.read import TYPES, type_map, get_max_workers
 from pysbd import Segmenter
 import copy
+import functools
 
-def search(entry):
+def search(entry, overall_cls, segmenter, inited_type_map, args):
     # collect text title, which is the 1st sentence in the raw text
     title = entry['text'].split('\n')[0]
     context_wo_title = '\n'.join(entry['text'].split('\n')[1:]) 
@@ -32,6 +33,7 @@ def search(entry):
                 # you may use `mined_num` and `count_dict` for data analysis
 
     return {'read_compre': read_compre, 'file_name': entry['file_name']}
+
 
 if __name__ == "__main__":
 
@@ -66,7 +68,7 @@ if __name__ == "__main__":
 
     raw_texts = []
     for text_id, path in tqdm(enumerate(paths)):
-        file_name = path.split('/')[-1]
+        file_name = os.path.basename(path)
         with open(path, 'r', encoding='utf8') as f:
             text = f.read().strip()
             raw_texts.append({'text':text, 'text_id': text_id, 'file_name': file_name})
@@ -84,14 +86,15 @@ if __name__ == "__main__":
     # to chunk text to sentences   
     segmenter = Segmenter(language='en',clean=False)
 
+    partial_search = functools.partial(search, overall_cls=overall_cls, segmenter=segmenter,inited_type_map=inited_type_map, args=args) 
     print('transferring raw texts into reading comprehension...')
-    read_compre =list(process_map(search, raw_texts, max_workers=max_workers, chunksize=8192))
+    read_compre =list(process_map(partial_search, raw_texts, max_workers=max_workers, chunksize=8192))
 
     print('saving reading comprehension texts...')
     # sort by text_id to align with the order of raw texts
     for entry in read_compre:
         path = os.path.join(args.output_dir,entry["file_name"]) 
-        with open(path,'w') as  f:
+        with open(path, 'w', encoding='utf-8') as  f:
             f.write(entry['read_compre']) 
         f.close()
     
