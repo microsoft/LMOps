@@ -633,7 +633,11 @@ class GenerationIntegrationTestsMixin:
             "do_sample": False,
             "num_beams": 3,
         }
-        expectation = 13
+        if is_pt:
+            expectation = 20
+        else:
+            # TODO (joao): fix me
+            expectation = 13
 
         tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-gpt2")
         text = """Hello, my dog is cute and"""
@@ -647,7 +651,7 @@ class GenerationIntegrationTestsMixin:
         generated_tokens = model.generate(**tokens, eos_token_id=eos_token_id, **generation_kwargs)
         unpadded_correct_condition = expectation == len(generated_tokens[0])
         padded_correct_condition = expectation < len(generated_tokens[0]) and all(
-            [token == model.config.pad_token_id for token in generated_tokens[0][expectation:]]
+            token == model.config.pad_token_id for token in generated_tokens[0][expectation:]
         )
         self.assertTrue(unpadded_correct_condition or padded_correct_condition)
 
@@ -655,7 +659,7 @@ class GenerationIntegrationTestsMixin:
         generated_tokens = model.generate(**tokens, eos_token_id=eos_token_id, **generation_kwargs)
         unpadded_correct_condition = expectation == len(generated_tokens[0])
         padded_correct_condition = expectation < len(generated_tokens[0]) and all(
-            [token == model.config.pad_token_id for token in generated_tokens[0][expectation:]]
+            token == model.config.pad_token_id for token in generated_tokens[0][expectation:]
         )
         self.assertTrue(unpadded_correct_condition or padded_correct_condition)
 

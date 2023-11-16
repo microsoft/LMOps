@@ -507,8 +507,8 @@ class SamMaskDecoder(nn.Module):
 
         # Expand per-image data in batch direction to be per-point
         image_embeddings = image_embeddings + dense_prompt_embeddings
-        image_embeddings = image_embeddings.repeat(point_batch_size, 1, 1, 1)
-        image_positional_embeddings = image_positional_embeddings.repeat(point_batch_size, 1, 1, 1)
+        image_embeddings = image_embeddings.repeat_interleave(point_batch_size, 0)
+        image_positional_embeddings = image_positional_embeddings.repeat_interleave(point_batch_size, 0)
 
         # Run the transformer, image_positional_embedding are consumed
         point_embedding, image_embeddings, attentions = self.transformer(
@@ -1042,15 +1042,8 @@ class SamVisionEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                 )
             else:
@@ -1190,7 +1183,7 @@ SAM_INPUTS_DOCSTRING = r"""
     SAM_START_DOCSTRING,
 )
 class SamModel(SamPreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"prompt_encoder.shared_embedding.positional_embedding"]
+    _tied_weights_keys = ["prompt_encoder.shared_embedding.positional_embedding"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -1296,7 +1289,7 @@ class SamModel(SamPreTrainedModel):
         target_embedding: Optional[torch.FloatTensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
-        return_dict=None,
+        return_dict: Optional[bool] = None,
         **kwargs,
     ) -> List[Dict[str, torch.Tensor]]:
         r"""

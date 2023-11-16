@@ -24,6 +24,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from huggingface_hub import get_full_repo_name
 from packaging import version
 
 from .debug_utils import DebugOption
@@ -33,12 +34,10 @@ from .trainer_utils import (
     HubStrategy,
     IntervalStrategy,
     SchedulerType,
-    ShardedDDPOption,
 )
 from .utils import (
     ExplicitEnum,
     cached_property,
-    get_full_repo_name,
     is_accelerate_available,
     is_safetensors_available,
     is_sagemaker_dp_enabled,
@@ -47,11 +46,14 @@ from .utils import (
     is_torch_bf16_cpu_available,
     is_torch_bf16_gpu_available,
     is_torch_neuroncore_available,
+    is_torch_npu_available,
     is_torch_tf32_available,
     is_torch_tpu_available,
+    is_torch_xpu_available,
     logging,
     requires_backends,
 )
+from .utils.generic import strtobool
 from .utils.import_utils import is_optimum_neuron_available
 
 
@@ -87,9 +89,9 @@ if is_torch_neuroncore_available(check_device=False):
             )
             import torch_xla.distributed.xla_backend as xbn
 
-            if not isinstance(torch.distributed.group.WORLD, xbn.ProcessGroupXla):
-                torch.distributed.init_process_group(backend="xla")
-                if not isinstance(torch.distributed.group.WORLD, xbn.ProcessGroupXla):
+            if not isinstance(dist.group.WORLD, xbn.ProcessGroupXla):
+                dist.init_process_group(backend="xla")
+                if not isinstance(dist.group.WORLD, xbn.ProcessGroupXla):
                     raise AssertionError("Failed to initialize torch.distributed process group using XLA backend.")
 
 
@@ -137,6 +139,7 @@ class OptimizerNames(ExplicitEnum):
     ADAMW_TORCH = "adamw_torch"
     ADAMW_TORCH_FUSED = "adamw_torch_fused"
     ADAMW_TORCH_XLA = "adamw_torch_xla"
+    ADAMW_TORCH_NPU_FUSED = "adamw_torch_npu_fused"
     ADAMW_APEX_FUSED = "adamw_apex_fused"
     ADAFACTOR = "adafactor"
     ADAMW_ANYPRECISION = "adamw_anyprecision"
@@ -150,8 +153,10 @@ class OptimizerNames(ExplicitEnum):
     PAGED_ADAMW_8BIT = "paged_adamw_8bit"
     PAGED_LION = "paged_lion_32bit"
     PAGED_LION_8BIT = "paged_lion_8bit"
+    RMSPROP = "rmsprop"
 
 
+# TODO: `TrainingArguments` users rely on it being fully mutable. In the future see if we can narrow this to a few keys: https://github.com/huggingface/transformers/pull/25903
 @dataclass
 class TrainingArguments:
     """
@@ -191,9 +196,9 @@ class TrainingArguments:
         prediction_loss_only (`bool`, *optional*, defaults to `False`):
             When performing evaluation and generating predictions, only returns the loss.
         per_device_train_batch_size (`int`, *optional*, defaults to 8):
-            The batch size per GPU/TPU core/CPU for training.
+            The batch size per GPU/XPU/TPU/MPS/NPU core/CPU for training.
         per_device_eval_batch_size (`int`, *optional*, defaults to 8):
-            The batch size per GPU/TPU core/CPU for evaluation.
+            The batch size per GPU/XPU/TPU/MPS/NPU core/CPU for evaluation.
         gradient_accumulation_steps (`int`, *optional*, defaults to 1):
             Number of updates steps to accumulate the gradients for, before performing a backward/update pass.
 
@@ -206,7 +211,7 @@ class TrainingArguments:
 
         eval_accumulation_steps (`int`, *optional*):
             Number of predictions steps to accumulate the output tensors for, before moving the results to the CPU. If
-            left unset, the whole predictions are accumulated on GPU/TPU before being moved to the CPU (faster but
+            left unset, the whole predictions are accumulated on GPU/NPU/TPU before being moved to the CPU (faster but
             requires more memory).
         eval_delay (`float`, *optional*):
             Number of epochs or steps to wait for before the first evaluation can be performed, depending on the
@@ -233,6 +238,8 @@ class TrainingArguments:
             when all data is exhausted
         lr_scheduler_type (`str` or [`SchedulerType`], *optional*, defaults to `"linear"`):
             The scheduler type to use. See the documentation of [`SchedulerType`] for all possible values.
+        lr_scheduler_kwargs ('dict', *optional*, defaults to {}):
+            The extra arguments for the lr_scheduler. See the documentation of each scheduler for possible values.
         warmup_ratio (`float`, *optional*, defaults to 0.0):
             Ratio of total training steps used for a linear warmup from 0 to `learning_rate`.
         warmup_steps (`int`, *optional*, defaults to 0):
@@ -283,8 +290,12 @@ class TrainingArguments:
             float in range `[0,1)`. If smaller than 1, will be interpreted as ratio of total training steps.
         save_total_limit (`int`, *optional*):
             If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in
-            `output_dir`.
-        save_safetensors (`bool`, *optional*, defaults to `False`):
+            `output_dir`. When `load_best_model_at_end` is enabled, the "best" checkpoint according to
+            `metric_for_best_model` will always be retained in addition to the most recent ones. For example, for
+            `save_total_limit=5` and `load_best_model_at_end`, the four last checkpoints will always be retained
+            alongside the best model. When `save_total_limit=1` and `load_best_model_at_end`, it is possible that two
+            checkpoints are saved: the last one and the best one (if they are different).
+        save_safetensors (`bool`, *optional*, defaults to `True`):
             Use [safetensors](https://huggingface.co/docs/safetensors) saving and loading for state dicts instead of
             default `torch.load` and `torch.save`.
         save_on_each_node (`bool`, *optional*, defaults to `False`):
@@ -293,8 +304,8 @@ class TrainingArguments:
 
             This should not be activated when the different nodes use the same storage as the files will be saved with
             the same names for each node.
-        no_cuda (`bool`, *optional*, defaults to `False`):
-            Whether to not use CUDA even when it is available or not.
+        use_cpu (`bool`, *optional*, defaults to `False`):
+            Whether or not to use cpu. If set to False, we will use cuda or mps device if available.
         seed (`int`, *optional*, defaults to 42):
             Random seed that will be set at the beginning of training. To ensure reproducibility across runs, use the
             [`~Trainer.model_init`] function to instantiate the model if it has some randomly initialized parameters.
@@ -309,7 +320,7 @@ class TrainingArguments:
             installation](https://github.com/intel/intel-extension-for-pytorch).
         bf16 (`bool`, *optional*, defaults to `False`):
             Whether to use bf16 16-bit (mixed) precision training instead of 32-bit training. Requires Ampere or higher
-            NVIDIA architecture or using CPU (no_cuda). This is an experimental API and it may change.
+            NVIDIA architecture or using CPU (use_cpu) or Ascend NPU. This is an experimental API and it may change.
         fp16 (`bool`, *optional*, defaults to `False`):
             Whether to use fp16 16-bit (mixed) precision training instead of 32-bit training.
         fp16_opt_level (`str`, *optional*, defaults to 'O1'):
@@ -318,9 +329,9 @@ class TrainingArguments:
         fp16_backend (`str`, *optional*, defaults to `"auto"`):
             This argument is deprecated. Use `half_precision_backend` instead.
         half_precision_backend (`str`, *optional*, defaults to `"auto"`):
-            The backend to use for mixed precision training. Must be one of `"auto", "cuda_amp", "apex", "cpu_amp"`.
-            `"auto"` will use CPU/CUDA AMP or APEX depending on the PyTorch version detected, while the other choices
-            will force the requested backend.
+            The backend to use for mixed precision training. Must be one of `"auto", "apex", "cpu_amp"`. `"auto"` will
+            use CPU/CUDA AMP or APEX depending on the PyTorch version detected, while the other choices will force the
+            requested backend.
         bf16_full_eval (`bool`, *optional*, defaults to `False`):
             Whether to use full bfloat16 evaluation instead of 32-bit. This will be faster and save memory but can harm
             metric values. This is an experimental API and it may change.
@@ -335,7 +346,7 @@ class TrainingArguments:
         local_rank (`int`, *optional*, defaults to -1):
             Rank of the process during distributed training.
         ddp_backend (`str`, *optional*):
-            The backend to use for distributed training. Must be one of `"nccl"`, `"mpi"`, `"ccl"`, `"gloo"`.
+            The backend to use for distributed training. Must be one of `"nccl"`, `"mpi"`, `"ccl"`, `"gloo"`, `"hccl"`.
         tpu_num_cores (`int`, *optional*):
             When training on TPU, the number of TPU cores (automatically passed by launcher script).
         dataloader_drop_last (`bool`, *optional*, defaults to `False`):
@@ -371,7 +382,10 @@ class TrainingArguments:
             except if the model used is one of the `XxxForQuestionAnswering` in which case it will also include the
             `["start_positions", "end_positions"]` keys.
         load_best_model_at_end (`bool`, *optional*, defaults to `False`):
-            Whether or not to load the best model found during training at the end of training.
+            Whether or not to load the best model found during training at the end of training. When this option is
+            enabled, the best checkpoint will always be saved. See
+            [`save_total_limit`](https://huggingface.co/docs/transformers/main_classes/trainer#transformers.TrainingArguments.save_total_limit)
+            for more.
 
             <Tip>
 
@@ -397,22 +411,7 @@ class TrainingArguments:
             When resuming training, whether or not to skip the epochs and batches to get the data loading at the same
             stage as in the previous training. If set to `True`, the training will begin faster (as that skipping step
             can take a long time) but will not yield the same results as the interrupted training would have.
-        sharded_ddp (`bool`, `str` or list of [`~trainer_utils.ShardedDDPOption`], *optional*, defaults to `False`):
-            Use Sharded DDP training from [FairScale](https://github.com/facebookresearch/fairscale) (in distributed
-            training only). This is an experimental feature.
-
-            A list of options along the following:
-
-            - `"simple"`: to use first instance of sharded DDP released by fairscale (`ShardedDDP`) similar to ZeRO-2.
-            - `"zero_dp_2"`: to use the second instance of sharded DPP released by fairscale (`FullyShardedDDP`) in
-              Zero-2 mode (with `reshard_after_forward=False`).
-            - `"zero_dp_3"`: to use the second instance of sharded DPP released by fairscale (`FullyShardedDDP`) in
-              Zero-3 mode (with `reshard_after_forward=True`).
-            - `"offload"`: to add ZeRO-offload (only compatible with `"zero_dp_2"` and `"zero_dp_3"`).
-
-            If a string is passed, it will be split on space. If a bool is passed, it will be converted to an empty
-            list for `False` and `["simple"]` for `True`.
-        fsdp (`bool`, `str` or list of [`~trainer_utils.FSDPOption`], *optional*, defaults to `False`):
+        fsdp (`bool`, `str` or list of [`~trainer_utils.FSDPOption`], *optional*, defaults to `''`):
             Use PyTorch Distributed Parallel Training (in distributed training only).
 
             A list of options along the following:
@@ -427,13 +426,13 @@ class TrainingArguments:
             deepspeed json config file (e.g., `ds_config.json`) or an already loaded json file as `dict`.
 
             A List of config and its options:
-                - fsdp_min_num_params (`int`, *optional*, defaults to `0`):
+                - min_num_params (`int`, *optional*, defaults to `0`):
                     FSDP's minimum number of parameters for Default Auto Wrapping. (useful only when `fsdp` field is
                     passed).
-                - fsdp_transformer_layer_cls_to_wrap (`List[str]`, *optional*):
+                - transformer_layer_cls_to_wrap (`List[str]`, *optional*):
                     List of transformer layer class names (case-sensitive) to wrap, e.g, `BertLayer`, `GPTJBlock`,
                     `T5Block` .... (useful only when `fsdp` flag is passed).
-                - fsdp_backward_prefetch (`str`, *optional*)
+                - backward_prefetch (`str`, *optional*)
                     FSDP's backward prefetch mode. Controls when to prefetch next set of parameters (useful only when
                     `fsdp` field is passed).
 
@@ -445,7 +444,7 @@ class TrainingArguments:
                     - `"backward_post"` : This prefetches the next set of parameters after the current set of
                       parameter’s
                         gradient computation.
-                - fsdp_forward_prefetch (`bool`, *optional*, defaults to `False`)
+                - forward_prefetch (`bool`, *optional*, defaults to `False`)
                     FSDP's forward prefetch mode (useful only when `fsdp` field is passed).
                      If `"True"`, then FSDP explicitly prefetches the next upcoming all-gather while executing in the
                      forward pass.
@@ -453,6 +452,14 @@ class TrainingArguments:
                     FSDP's limit_all_gathers (useful only when `fsdp` field is passed).
                      If `"True"`, FSDP explicitly synchronizes the CPU thread to prevent too many in-flight
                      all-gathers.
+                - use_orig_params (`bool`, *optional*, defaults to `False`)
+                    If `"True"`, allows non-uniform `requires_grad` during init, which means support for interspersed
+                    frozen and trainable paramteres. Useful in cases such as parameter-efficient fine-tuning. Please
+                    refer this
+                    [blog](https://dev-discuss.pytorch.org/t/rethinking-pytorch-fully-sharded-data-parallel-fsdp-from-first-principles/1019
+                - sync_module_states (`bool`, *optional*, defaults to `True`)
+                    If `"True"`, each individually wrapped FSDP unit will broadcast module parameters from rank 0 to
+                    ensure they are the same across all ranks after initialization
                 - xla (`bool`, *optional*, defaults to `False`):
                     Whether to use PyTorch/XLA Fully Sharded Data Parallel Training. This is an experimental feature
                     and its API may evolve in the future.
@@ -465,6 +472,10 @@ class TrainingArguments:
                     Will use gradient checkpointing over each nested XLA FSDP wrapped layer. This setting can only be
                     used when the xla flag is set to true, and an auto wrapping policy is specified through
                     fsdp_min_num_params or fsdp_transformer_layer_cls_to_wrap.
+                - activation_checkpointing (`bool`, *optional*, defaults to `False`):
+                    If True, activation checkpointing is a technique to reduce memory usage by clearing activations of
+                    certain layers and recomputing them during a backward pass. Effectively, this trades extra
+                    computation time for reduced memory usage.
 
         deepspeed (`str` or `dict`, *optional*):
             Use [Deepspeed](https://github.com/microsoft/deepspeed). This is an experimental feature and its API may
@@ -484,7 +495,7 @@ class TrainingArguments:
             - `"tpu_metrics_debug"`: print debug metrics on TPU
 
             The options should be separated by whitespaces.
-        optim (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_hf"`):
+        optim (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_torch"`):
             The optimizer to use: adamw_hf, adamw_torch, adamw_torch_fused, adamw_apex_fused, adamw_anyprecision or
             adafactor.
         optim_args (`str`, *optional*):
@@ -498,13 +509,17 @@ class TrainingArguments:
             instance of `Dataset`.
         report_to (`str` or `List[str]`, *optional*, defaults to `"all"`):
             The list of integrations to report the results and logs to. Supported platforms are `"azure_ml"`,
-            `"comet_ml"`, `"mlflow"`, `"neptune"`, `"tensorboard"`,`"clearml"` and `"wandb"`. Use `"all"` to report to
-            all integrations installed, `"none"` for no integrations.
+            `"clearml"`, `"codecarbon"`, `"comet_ml"`, `"dagshub"`, `"dvclive"`, `"flyte"`, `"mlflow"`, `"neptune"`,
+            `"tensorboard"`, and `"wandb"`. Use `"all"` to report to all integrations installed, `"none"` for no
+            integrations.
         ddp_find_unused_parameters (`bool`, *optional*):
             When using distributed training, the value of the flag `find_unused_parameters` passed to
             `DistributedDataParallel`. Will default to `False` if gradient checkpointing is used, `True` otherwise.
         ddp_bucket_cap_mb (`int`, *optional*):
             When using distributed training, the value of the flag `bucket_cap_mb` passed to `DistributedDataParallel`.
+        ddp_broadcast_buffers (`bool`, *optional*):
+            When using distributed training, the value of the flag `broadcast_buffers` passed to
+            `DistributedDataParallel`. Will default to `False` if gradient checkpointing is used, `True` otherwise.
         dataloader_pin_memory (`bool`, *optional*, defaults to `True`):
             Whether you want to pin memory in data loaders or not. Will default to `True`.
         skip_memory_metrics (`bool`, *optional*, defaults to `True`):
@@ -555,8 +570,12 @@ class TrainingArguments:
             `huggingface-cli login`.
         hub_private_repo (`bool`, *optional*, defaults to `False`):
             If True, the Hub repo will be set to private.
+        hub_always_push (`bool`, *optional*, defaults to `False`):
+            Unless this is `True`, the `Trainer` will skip pushing a checkpoint when the previous push is not finished.
         gradient_checkpointing (`bool`, *optional*, defaults to `False`):
             If True, use gradient checkpointing to save memory at the expense of slower backward pass.
+        gradient_checkpointing_kwargs (`dict`, *optional*, defaults to `None`):
+            Key word arguments to be passed to the `gradient_checkpointing_enable` method.
         include_inputs_for_metrics (`bool`, *optional*, defaults to `False`):
             Whether or not the inputs will be passed to the `compute_metrics` function. This is intended for metrics
             that need inputs, predictions and references for scoring calculation in Metric class.
@@ -581,7 +600,7 @@ class TrainingArguments:
             (https://pytorch.org/docs/stable/distributed.html#torch.distributed.init_process_group) for more
             information.
         use_mps_device (`bool`, *optional*, defaults to `False`):
-            Whether to use Apple Silicon chip based `mps` device.
+            This argument is deprecated.`mps` device will be used if it is available similar to `cuda` device.
         torch_compile (`bool`, *optional*, defaults to `False`):
             Whether or not to compile the model using PyTorch 2.0
             [`torch.compile`](https://pytorch.org/get-started/pytorch-2.0/).
@@ -604,6 +623,31 @@ class TrainingArguments:
             Refer to the PyTorch doc for possible values and note that they may change across PyTorch versions.
 
             This flag is experimental and subject to change in future releases.
+        split_batches (`bool`, *optional*):
+            Whether or not the accelerator should split the batches yielded by the dataloaders across the devices
+            during distributed training. If
+
+            set to `True`, the actual batch size used will be the same on any kind of distributed processes, but it
+            must be a
+
+            round multiple of the number of processes you are using (such as GPUs).
+        include_tokens_per_second (`bool`, *optional*):
+            Whether or not to compute the number of tokens per second per device for training speed metrics.
+
+            This will iterate over the entire training dataloader once beforehand,
+
+            and will slow down the entire process.
+
+        include_num_input_tokens_seen (`bool`, *optional*):
+            Whether or not to track the number of input tokens seen throughout training.
+
+            May be slower in distributed training as gather operations must be called.
+
+        neftune_noise_alpha (`Optional[float]`):
+            If not `None`, this will activate NEFTune noise embeddings. This can drastically improve model performance
+            for instruction fine-tuning. Check out the [original paper](https://arxiv.org/abs/2310.05914) and the
+            [original code](https://github.com/neelsjain/NEFTune). Support transformers `PreTrainedModel` and also
+            `PeftModel` from peft.
     """
 
     framework = "pt"
@@ -633,10 +677,10 @@ class TrainingArguments:
     )
 
     per_device_train_batch_size: int = field(
-        default=8, metadata={"help": "Batch size per GPU/TPU core/CPU for training."}
+        default=8, metadata={"help": "Batch size per GPU/TPU/MPS/NPU core/CPU for training."}
     )
     per_device_eval_batch_size: int = field(
-        default=8, metadata={"help": "Batch size per GPU/TPU core/CPU for evaluation."}
+        default=8, metadata={"help": "Batch size per GPU/TPU/MPS/NPU core/CPU for evaluation."}
     )
 
     per_gpu_train_batch_size: Optional[int] = field(
@@ -693,6 +737,14 @@ class TrainingArguments:
         default="linear",
         metadata={"help": "The scheduler type to use."},
     )
+    lr_scheduler_kwargs: Optional[Dict] = field(
+        default_factory=dict,
+        metadata={
+            "help": (
+                "Extra parameters for the lr_scheduler such as {'num_cycles': 1} for the cosine with hard restarts"
+            )
+        },
+    )
     warmup_ratio: float = field(
         default=0.0, metadata={"help": "Linear warmup over warmup_ratio fraction of total steps."}
     )
@@ -735,7 +787,7 @@ class TrainingArguments:
         default=500,
         metadata={
             "help": (
-                "Log every X updates steps. Should be an integer or a float in range `[0,1)`."
+                "Log every X updates steps. Should be an integer or a float in range `[0,1)`. "
                 "If smaller than 1, will be interpreted as ratio of total training steps."
             )
         },
@@ -749,7 +801,7 @@ class TrainingArguments:
         default=500,
         metadata={
             "help": (
-                "Save checkpoint every X updates steps. Should be an integer or a float in range `[0,1)`."
+                "Save checkpoint every X updates steps. Should be an integer or a float in range `[0,1)`. "
                 "If smaller than 1, will be interpreted as ratio of total training steps."
             )
         },
@@ -758,13 +810,18 @@ class TrainingArguments:
         default=None,
         metadata={
             "help": (
-                "Limit the total amount of checkpoints. "
-                "Deletes the older checkpoints in the output_dir. Default is unlimited checkpoints"
+                "If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in"
+                " `output_dir`. When `load_best_model_at_end` is enabled, the 'best' checkpoint according to"
+                " `metric_for_best_model` will always be retained in addition to the most recent ones. For example,"
+                " for `save_total_limit=5` and `load_best_model_at_end=True`, the four last checkpoints will always be"
+                " retained alongside the best model. When `save_total_limit=1` and `load_best_model_at_end=True`,"
+                " it is possible that two checkpoints are saved: the last one and the best one (if they are different)."
+                " Default is unlimited checkpoints"
             )
         },
     )
     save_safetensors: Optional[bool] = field(
-        default=False,
+        default=True,
         metadata={
             "help": "Use safetensors saving and loading for state dicts instead of default torch.load and torch.save."
         },
@@ -778,9 +835,22 @@ class TrainingArguments:
             )
         },
     )
-    no_cuda: bool = field(default=False, metadata={"help": "Do not use CUDA even when it is available"})
+    no_cuda: bool = field(
+        default=False,
+        metadata={"help": "This argument is deprecated. It will be removed in version 5.0 of 🤗 Transformers."},
+    )
+    use_cpu: bool = field(
+        default=False,
+        metadata={
+            "help": " Whether or not to use cpu. If set to False, we will use cuda/tpu/mps/npu device if available."
+        },
+    )
     use_mps_device: bool = field(
-        default=False, metadata={"help": "Whether to use Apple Silicon chip based `mps` device."}
+        default=False,
+        metadata={
+            "help": "This argument is deprecated. `mps` device will be used if available similar to `cuda` device."
+            " It will be removed in version 5.0 of 🤗 Transformers"
+        },
     )
     seed: int = field(default=42, metadata={"help": "Random seed that will be set at the beginning of training."})
     data_seed: Optional[int] = field(default=None, metadata={"help": "Random seed to be used with data samplers."})
@@ -801,7 +871,7 @@ class TrainingArguments:
         metadata={
             "help": (
                 "Whether to use bf16 (mixed) precision instead of 32-bit. Requires Ampere or higher NVIDIA"
-                " architecture or using CPU (no_cuda). This is an experimental API and it may change."
+                " architecture or using CPU (use_cpu) or Ascend NPU. This is an experimental API and it may change."
             )
         },
     )
@@ -822,7 +892,7 @@ class TrainingArguments:
         default="auto",
         metadata={
             "help": "The backend to be used for half precision.",
-            "choices": ["auto", "cuda_amp", "apex", "cpu_amp"],
+            "choices": ["auto", "apex", "cpu_amp"],
         },
     )
     bf16_full_eval: bool = field(
@@ -852,7 +922,7 @@ class TrainingArguments:
         default=None,
         metadata={
             "help": "The backend to be used for distributed training",
-            "choices": ["nccl", "gloo", "mpi", "ccl"],
+            "choices": ["nccl", "gloo", "mpi", "ccl", "hccl"],
         },
     )
     tpu_num_cores: Optional[int] = field(
@@ -866,7 +936,7 @@ class TrainingArguments:
             )
         },
     )
-    debug: str = field(
+    debug: Union[str, List[DebugOption]] = field(
         default="",
         metadata={
             "help": (
@@ -884,7 +954,7 @@ class TrainingArguments:
         default=None,
         metadata={
             "help": (
-                "Run an evaluation every X steps. Should be an integer or a float in range `[0,1)`."
+                "Run an evaluation every X steps. Should be an integer or a float in range `[0,1)`. "
                 "If smaller than 1, will be interpreted as ratio of total training steps."
             )
         },
@@ -917,10 +987,14 @@ class TrainingArguments:
     label_names: Optional[List[str]] = field(
         default=None, metadata={"help": "The list of keys in your dictionary of inputs that correspond to the labels."}
     )
-
     load_best_model_at_end: Optional[bool] = field(
         default=False,
-        metadata={"help": "Whether or not to load the best model found during training at the end of training."},
+        metadata={
+            "help": (
+                "Whether or not to load the best model found during training at the end of training. When this option"
+                " is enabled, the best checkpoint will always be saved. See `save_total_limit` for more."
+            )
+        },
     )
     metric_for_best_model: Optional[str] = field(
         default=None, metadata={"help": "The metric to use to compare two different models."}
@@ -937,18 +1011,7 @@ class TrainingArguments:
             )
         },
     )
-    sharded_ddp: str = field(
-        default="",
-        metadata={
-            "help": (
-                "Whether or not to use sharded DDP training (in distributed training only). The base option should be"
-                " `simple`, `zero_dp_2` or `zero_dp_3` and you can add CPU-offload to `zero_dp_2` or `zero_dp_3` like"
-                " this: zero_dp_2 offload` or `zero_dp_3 offload`. You can add auto-wrap to `zero_dp_2` or `zero_dp_3`"
-                " with the same syntax: zero_dp_2 auto_wrap` or `zero_dp_3 auto_wrap`."
-            ),
-        },
-    )
-    fsdp: str = field(
+    fsdp: Optional[Union[List[FSDPOption], str]] = field(
         default="",
         metadata={
             "help": (
@@ -969,12 +1032,13 @@ class TrainingArguments:
             )
         },
     )
+    # Do not touch this type annotation or it will stop working in CLI
     fsdp_config: Optional[str] = field(
         default=None,
         metadata={
             "help": (
-                "Config to be used with FSDP (Pytorch Fully Sharded  Data Parallel). The  value is either a"
-                "fsdp json config file (e.g., `fsdp_config.json`) or an already loaded  json file as `dict`."
+                "Config to be used with FSDP (Pytorch Fully Sharded  Data Parallel). The value is either a "
+                "fsdp json config file (e.g., `fsdp_config.json`) or an already loaded json file as `dict`."
             )
         },
     )
@@ -987,11 +1051,12 @@ class TrainingArguments:
             )
         },
     )
+    # Do not touch this type annotation or it will stop working in CLI
     deepspeed: Optional[str] = field(
         default=None,
         metadata={
             "help": (
-                "Enable deepspeed and pass the path to deepspeed json config file (e.g. ds_config.json) or an already"
+                "Enable deepspeed and pass the path to deepspeed json config file (e.g. `ds_config.json`) or an already"
                 " loaded json file as a dict"
             )
         },
@@ -1000,12 +1065,12 @@ class TrainingArguments:
         default=0.0, metadata={"help": "The label smoothing epsilon to apply (zero means no label smoothing)."}
     )
 
-    default_optim = "adamw_hf"
+    default_optim = "adamw_torch"
     # XXX: enable when pytorch==2.0.1 comes out - we want to give it time to get all the bugs sorted out
     # if is_torch_available() and version.parse(version.parse(torch.__version__).base_version) >= version.parse("2.1.0"):
     #     default_optim = "adamw_torch_fused"
     # and update the doc above to:
-    # optim (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_torch_fused"` (for torch<2.1.0 `"adamw_hf"`):
+    # optim (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_torch_fused"` (for torch<2.1.0 `"adamw_torch"`):
     optim: Union[OptimizerNames, str] = field(
         default=default_optim,
         metadata={"help": "The optimizer to use."},
@@ -1041,6 +1106,15 @@ class TrainingArguments:
             )
         },
     )
+    ddp_broadcast_buffers: Optional[bool] = field(
+        default=None,
+        metadata={
+            "help": (
+                "When using distributed training, the value of the flag `broadcast_buffers` passed to "
+                "`DistributedDataParallel`."
+            )
+        },
+    )
     dataloader_pin_memory: bool = field(
         default=True, metadata={"help": "Whether or not to pin memory for DataLoader."}
     )
@@ -1066,10 +1140,20 @@ class TrainingArguments:
     )
     hub_token: Optional[str] = field(default=None, metadata={"help": "The token to use to push to the Model Hub."})
     hub_private_repo: bool = field(default=False, metadata={"help": "Whether the model repository is private or not."})
+    hub_always_push: bool = field(
+        default=False,
+        metadata={"help": "Unless `True`, the Trainer will skip pushes if the previous one wasn't finished yet."},
+    )
     gradient_checkpointing: bool = field(
         default=False,
         metadata={
             "help": "If True, use gradient checkpointing to save memory at the expense of slower backward pass."
+        },
+    )
+    gradient_checkpointing_kwargs: Optional[dict] = field(
+        default=None,
+        metadata={
+            "help": "Gradient checkpointing key word arguments such as `use_reentrant`. Will be passed to `torch.utils.checkpoint.checkpoint` through `model.gradient_checkpointing_enable`."
         },
     )
     include_inputs_for_metrics: bool = field(
@@ -1080,7 +1164,7 @@ class TrainingArguments:
         default="auto",
         metadata={
             "help": "Deprecated. Use half_precision_backend instead",
-            "choices": ["auto", "cuda_amp", "apex", "cpu_amp"],
+            "choices": ["auto", "apex", "cpu_amp"],
         },
     )
     push_to_hub_model_id: Optional[str] = field(
@@ -1157,11 +1241,40 @@ class TrainingArguments:
         },
     )
 
-    xpu_backend: Optional[str] = field(
+    dispatch_batches: Optional[bool] = field(
         default=None,
         metadata={
-            "help": "The backend to be used for distributed training on Intel XPU.",
-            "choices": ["mpi", "ccl", "gloo"],
+            "help": "Whether to dispatch batches across devices in distributed training. If set to `True`, the dataloader prepared by the Accelerator is only iterated through on the main process "
+            "and then the batches are split and broadcast to each process. Will default to `True` for `DataLoader` whose"
+            "underlying dataset is an `IterableDataset`, `False` otherwise."
+        },
+    )
+
+    split_batches: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": "Whether or not the accelerator should split the batches yielded by the dataloaders across the devices during distributed training. If"
+            "set to `True`, the actual batch size used will be the same on any kind of distributed processes, but it must be a"
+            "round multiple of the number of processes you are using (such as GPUs)."
+        },
+    )
+
+    include_tokens_per_second: Optional[bool] = field(
+        default=False,
+        metadata={"help": "If set to `True`, the speed metrics will include `tgs` (tokens per second per device)."},
+    )
+
+    include_num_input_tokens_seen: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": "If set to `True`, will track the number of input tokens seen throughout training. (May be slower in distributed training)"
+        },
+    )
+
+    neftune_noise_alpha: float = field(
+        default=None,
+        metadata={
+            "help": "Activates neftune noise embeddings into the model. NEFTune has been proven to drastically improve model performances for instrcution fine-tuning. Check out the original paper here: https://arxiv.org/abs/2310.05914 and the original code here: https://github.com/neelsjain/NEFTune. Only supported for `PreTrainedModel` and `PeftModel` classes."
         },
     )
 
@@ -1187,14 +1300,13 @@ class TrainingArguments:
             )
             # Go back to the underlying string or we won't be able to instantiate `IntervalStrategy` on it.
             self.evaluation_strategy = self.evaluation_strategy.value
-
-        if self.xpu_backend is not None:
+        if self.no_cuda:
             warnings.warn(
-                "using `xpu_backend` is deprecated and will be removed in version 4.31"
-                " of 🤗 Transformers. Use `ddp_backend` instead",
+                "using `no_cuda` is deprecated and will be removed in version 5.0 of 🤗 Transformers. "
+                "Use `use_cpu` instead",
                 FutureWarning,
             )
-            self.ddp_backend = self.xpu_backend
+            self.use_cpu = self.no_cuda
 
         self.evaluation_strategy = IntervalStrategy(self.evaluation_strategy)
         self.logging_strategy = IntervalStrategy(self.logging_strategy)
@@ -1245,7 +1357,7 @@ class TrainingArguments:
                     if not (self.eval_steps < 1 and self.save_steps < 1):
                         raise ValueError(
                             "--load_best_model_at_end requires the saving steps to be a multiple of the evaluation "
-                            "steps, which cannot get guaranteed when mixing ratio and absolute steps for save_steps"
+                            "steps, which cannot get guaranteed when mixing ratio and absolute steps for save_steps "
                             f"{self.save_steps} and eval_steps {self.eval_steps}."
                         )
                     # Work around floating point precision issues
@@ -1289,14 +1401,32 @@ class TrainingArguments:
                 self.half_precision_backend = self.fp16_backend
 
             if self.bf16 or self.bf16_full_eval:
-                if self.no_cuda and not is_torch_bf16_cpu_available() and not is_torch_tpu_available():
+                if self.use_cpu and not is_torch_bf16_cpu_available() and not is_torch_tpu_available():
                     # cpu
                     raise ValueError("Your setup doesn't support bf16/(cpu, tpu, neuroncore). You need torch>=1.10")
-                elif not self.no_cuda and torch.cuda.is_available() and not is_torch_bf16_gpu_available():
-                    # gpu
-                    raise ValueError(
-                        "Your setup doesn't support bf16/gpu. You need torch>=1.10, using Ampere GPU with cuda>=11.0"
-                    )
+                elif not self.use_cpu:
+                    if torch.cuda.is_available() and not is_torch_bf16_gpu_available():
+                        # gpu
+                        raise ValueError(
+                            "Your setup doesn't support bf16/gpu. You need torch>=1.10, using Ampere GPU with cuda>=11.0"
+                        )
+                    elif is_torch_npu_available():
+                        # npu
+                        from .pytorch_utils import is_torch_greater_or_equal_than_1_11
+
+                        if not is_torch_greater_or_equal_than_1_11:
+                            raise ValueError(
+                                "Your setup doesn't support bf16/npu. You need torch>=1.11, using Ascend NPU with "
+                                "`torch_npu` installed"
+                            )
+                    elif not is_torch_xpu_available():
+                        # xpu
+                        from .pytorch_utils import is_torch_greater_or_equal_than_1_12
+
+                        if not is_torch_greater_or_equal_than_1_12:
+                            raise ValueError(
+                                "Your setup doesn't support bf16/xpu. You need torch>=1.12, using Intel XPU/GPU with IPEX installed"
+                            )
 
         if self.fp16 and self.bf16:
             raise ValueError("At most one of fp16 and bf16 can be True, but not both")
@@ -1306,12 +1436,7 @@ class TrainingArguments:
 
         if self.bf16:
             if self.half_precision_backend == "apex":
-                raise ValueError(
-                    " `--half_precision_backend apex`: GPU bf16 is not supported by apex. Use"
-                    " `--half_precision_backend cuda_amp` instead"
-                )
-            if not (self.sharded_ddp == "" or not self.sharded_ddp):
-                raise ValueError("sharded_ddp is not supported with bf16")
+                raise ValueError(" `--half_precision_backend apex`: GPU bf16 is not supported by apex.")
 
         if self.lr_scheduler_type == SchedulerType.REDUCE_ON_PLATEAU:
             if self.evaluation_strategy == IntervalStrategy.NO:
@@ -1338,18 +1463,22 @@ class TrainingArguments:
             self.framework == "pt"
             and is_torch_available()
             and (self.device.type != "cuda")
+            and (self.device.type != "npu")
+            and (self.device.type != "xpu")
             and (get_xla_device_type(self.device) != "GPU")
             and (self.fp16 or self.fp16_full_eval)
         ):
             raise ValueError(
                 "FP16 Mixed precision training with AMP or APEX (`--fp16`) and FP16 half precision evaluation"
-                " (`--fp16_full_eval`) can only be used on CUDA devices."
+                " (`--fp16_full_eval`) can only be used on CUDA or NPU devices or certain XPU devices (with IPEX)."
             )
 
         if (
             self.framework == "pt"
             and is_torch_available()
             and (self.device.type != "cuda")
+            and (self.device.type != "npu")
+            and (self.device.type != "xpu")
             and (get_xla_device_type(self.device) != "GPU")
             and (get_xla_device_type(self.device) != "TPU")
             and (self.device.type != "cpu")
@@ -1357,7 +1486,7 @@ class TrainingArguments:
         ):
             raise ValueError(
                 "BF16 Mixed precision training with AMP (`--bf16`) and BF16 half precision evaluation"
-                " (`--bf16_full_eval`) can only be used on CUDA or CPU/TPU/NeuronCore devices."
+                " (`--bf16_full_eval`) can only be used on CUDA, XPU (with IPEX), NPU or CPU/TPU/NeuronCore devices."
             )
 
         if self.torchdynamo is not None:
@@ -1388,6 +1517,7 @@ class TrainingArguments:
                         " otherwise."
                     )
                     torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
             else:
                 logger.warning(
                     "The speedups for torchdynamo mostly come wih GPU Ampere or higher and which is not detected here."
@@ -1396,12 +1526,23 @@ class TrainingArguments:
             if self.tf32:
                 if is_torch_tf32_available():
                     torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
                 else:
                     raise ValueError("--tf32 requires Ampere or a newer GPU arch, cuda>=11 and torch>=1.7")
             else:
                 if is_torch_tf32_available():
                     torch.backends.cuda.matmul.allow_tf32 = False
+                    torch.backends.cudnn.allow_tf32 = False
                 # no need to assert on else
+
+        # if training args is specified, it will override the one specified in the accelerate config
+        if self.half_precision_backend != "apex":
+            mixed_precision_dtype = os.environ.get("ACCELERATE_MIXED_PRECISION", "no")
+            if self.fp16:
+                mixed_precision_dtype = "fp16"
+            elif self.bf16:
+                mixed_precision_dtype = "bf16"
+            os.environ["ACCELERATE_MIXED_PRECISION"] = mixed_precision_dtype
 
         if self.report_to is None:
             logger.info(
@@ -1428,20 +1569,6 @@ class TrainingArguments:
                 " during training"
             )
 
-        if isinstance(self.sharded_ddp, bool):
-            self.sharded_ddp = "simple" if self.sharded_ddp else ""
-        if isinstance(self.sharded_ddp, str):
-            self.sharded_ddp = [ShardedDDPOption(s) for s in self.sharded_ddp.split()]
-        if self.sharded_ddp == [ShardedDDPOption.OFFLOAD]:
-            raise ValueError(
-                "`--sharded_ddp offload` can't work on its own. It needs to be added to `--sharded_ddp zero_dp_2` or "
-                '`--sharded_ddp zero_dp_3`. For example, `--sharded_ddp "zero_dp_2 offload"`.'
-            )
-        elif len(self.sharded_ddp) > 1 and ShardedDDPOption.SIMPLE in self.sharded_ddp:
-            raise ValueError("`--sharded_ddp simple` is not compatible with any other option.")
-        elif ShardedDDPOption.ZERO_DP_2 in self.sharded_ddp and ShardedDDPOption.ZERO_DP_3 in self.sharded_ddp:
-            raise ValueError("`--sharded_ddp zero_dp_2` is not compatible with `--sharded_ddp zero_dp_3`.")
-
         if isinstance(self.fsdp, bool):
             self.fsdp = "full_shard" if self.fsdp else ""
         if isinstance(self.fsdp, str):
@@ -1458,44 +1585,44 @@ class TrainingArguments:
             self.fsdp_config = {}
 
         if isinstance(self.fsdp_config, str):
+            if len(self.fsdp) == 0:
+                warnings.warn("`--fsdp_config` is useful only when `--fsdp` is specified.")
             with io.open(self.fsdp_config, "r", encoding="utf-8") as f:
                 self.fsdp_config = json.load(f)
+                for k in list(self.fsdp_config.keys()):
+                    if k.startswith("fsdp_"):
+                        v = self.fsdp_config.pop(k)
+                        self.fsdp_config[k[5:]] = v
 
         if self.fsdp_min_num_params > 0:
             warnings.warn("using `--fsdp_min_num_params` is deprecated. Use fsdp_config instead ", FutureWarning)
 
-        self.fsdp_config["fsdp_min_num_params"] = max(
-            self.fsdp_config.get("fsdp_min_num_params", 0), self.fsdp_min_num_params
-        )
+        self.fsdp_config["min_num_params"] = max(self.fsdp_config.get("min_num_params", 0), self.fsdp_min_num_params)
 
-        # if fsdp_config["fsdp_transformer_layer_cls_to_wrap"] is specified as a string, convert it to a list with a single object
-        if isinstance(self.fsdp_config.get("fsdp_transformer_layer_cls_to_wrap", None), str):
-            self.fsdp_config["fsdp_transformer_layer_cls_to_wrap"] = [
-                self.fsdp_config["fsdp_transformer_layer_cls_to_wrap"]
-            ]
+        # if fsdp_config["transformer_layer_cls_to_wrap"] is specified as a string, convert it to a list with a single object
+        if isinstance(self.fsdp_config.get("transformer_layer_cls_to_wrap", None), str):
+            self.fsdp_config["transformer_layer_cls_to_wrap"] = [self.fsdp_config["transformer_layer_cls_to_wrap"]]
 
         if self.fsdp_transformer_layer_cls_to_wrap is not None:
             warnings.warn(
                 "using `--fsdp_transformer_layer_cls_to_wrap` is deprecated. Use fsdp_config instead ", FutureWarning
             )
-            self.fsdp_config["fsdp_transformer_layer_cls_to_wrap"] = self.fsdp_config.get(
-                "fsdp_transformer_layer_cls_to_wrap", []
+            self.fsdp_config["transformer_layer_cls_to_wrap"] = self.fsdp_config.get(
+                "transformer_layer_cls_to_wrap", []
             ) + [self.fsdp_transformer_layer_cls_to_wrap]
 
-        if len(self.fsdp) == 0 and self.fsdp_config["fsdp_min_num_params"] > 0:
-            warnings.warn("`--fsdp_min_num_params` is useful only when `--fsdp` is specified.")
+        if len(self.fsdp) == 0 and self.fsdp_config["min_num_params"] > 0:
+            warnings.warn("`min_num_params` is useful only when `--fsdp` is specified.")
 
-        if len(self.fsdp) == 0 and self.fsdp_config.get("fsdp_transformer_layer_cls_to_wrap", None) is not None:
-            warnings.warn("`--fsdp_transformer_layer_cls_to_wrap` is useful only when `--fsdp` is specified.")
+        if len(self.fsdp) == 0 and self.fsdp_config.get("transformer_layer_cls_to_wrap", None) is not None:
+            warnings.warn("`transformer_layer_cls_to_wrap` is useful only when `--fsdp` is specified.")
 
         if (
             len(self.fsdp) > 0
-            and self.fsdp_config["fsdp_min_num_params"] > 0
-            and self.fsdp_config.get("fsdp_transformer_layer_cls_to_wrap", None) is not None
+            and self.fsdp_config["min_num_params"] > 0
+            and self.fsdp_config.get("transformer_layer_cls_to_wrap", None) is not None
         ):
-            raise ValueError(
-                "`--fsdp_min_num_params` and `--fsdp_transformer_layer_cls_to_wrap` are mutually exclusive."
-            )
+            raise ValueError("`min_num_params` and `transformer_layer_cls_to_wrap` are mutually exclusive.")
         self.fsdp_config["xla"] = self.fsdp_config.get("xla", False)
         self.fsdp_config["xla_fsdp_grad_ckpt"] = self.fsdp_config.get("xla_fsdp_grad_ckpt", False)
         if self.fsdp_config["xla"]:
@@ -1521,23 +1648,29 @@ class TrainingArguments:
                 FSDP_SHARDING_STRATEGY,
             )
 
+            prefix = "FSDP_"
             for fsdp_option in self.fsdp:
                 if fsdp_option.upper() in FSDP_SHARDING_STRATEGY:
                     # set environment variable for FSDP sharding strategy
-                    os.environ["FSDP_SHARDING_STRATEGY"] = str(FSDP_SHARDING_STRATEGY.index(fsdp_option.upper()) + 1)
+                    os.environ[f"{prefix}SHARDING_STRATEGY"] = str(
+                        FSDP_SHARDING_STRATEGY.index(fsdp_option.upper()) + 1
+                    )
                 elif fsdp_option == FSDPOption.OFFLOAD:
-                    os.environ["FSDP_OFFLOAD_PARAMS"] = "true"
+                    os.environ[f"{prefix}OFFLOAD_PARAMS"] = "true"
                 elif fsdp_option == FSDPOption.AUTO_WRAP:
-                    if self.fsdp_config["fsdp_min_num_params"] > 0:
-                        os.environ["FSDP_MIN_NUM_PARAMS"] = str(self.fsdp_config["fsdp_min_num_params"])
-                        os.environ["FSDP_AUTO_WRAP_POLICY"] = FSDP_AUTO_WRAP_POLICY[1]
-                    elif self.fsdp_config.get("fsdp_transformer_layer_cls_to_wrap", None) is not None:
-                        os.environ["FSDP_TRANSFORMER_CLS_TO_WRAP"] = ",".join(
-                            self.fsdp_config["fsdp_transformer_layer_cls_to_wrap"]
+                    os.environ[f"{prefix}AUTO_WRAP_POLICY"] = FSDP_AUTO_WRAP_POLICY[0]
+                    if self.fsdp_config["min_num_params"] > 0:
+                        os.environ[f"{prefix}MIN_NUM_PARAMS"] = str(self.fsdp_config["min_num_params"])
+                        os.environ[f"{prefix}AUTO_WRAP_POLICY"] = FSDP_AUTO_WRAP_POLICY[1]
+                    elif self.fsdp_config.get("transformer_layer_cls_to_wrap", None) is not None:
+                        os.environ[f"{prefix}TRANSFORMER_CLS_TO_WRAP"] = ",".join(
+                            self.fsdp_config["transformer_layer_cls_to_wrap"]
                         )
-                        os.environ["FSDP_AUTO_WRAP_POLICY"] = FSDP_AUTO_WRAP_POLICY[0]
             prefetch_policy = self.fsdp_config.get("fsdp_backward_prefetch", "NO_PREFETCH")
-            os.environ["FSDP_BACKWARD_PREFETCH"] = prefetch_policy.upper()
+            os.environ[f"{prefix}BACKWARD_PREFETCH"] = prefetch_policy.upper()
+            os.environ[f"{prefix}FORWARD_PREFETCH"] = self.fsdp_config.get("forward_prefect", "false")
+            os.environ[f"{prefix}SYNC_MODULE_STATES"] = self.fsdp_config.get("sync_module_states", "true")
+            os.environ[f"{prefix}USE_ORIG_PARAMS"] = self.fsdp_config.get("use_orig_params", "false")
 
         if self.tpu_metrics_debug:
             warnings.warn(
@@ -1545,10 +1678,16 @@ class TrainingArguments:
                 " `--debug tpu_metrics_debug` instead",
                 FutureWarning,
             )
-            self.debug += " tpu_metrics_debug"
+            if self.debug is None:
+                self.debug = " tpu_metrics_debug"
+            else:
+                self.debug += " tpu_metrics_debug"
             self.tpu_metrics_debug = False
+
         if isinstance(self.debug, str):
             self.debug = [DebugOption(s) for s in self.debug.split()]
+        elif self.debug is None:
+            self.debug = []
 
         self.deepspeed_plugin = None
         if self.deepspeed:
@@ -1556,7 +1695,7 @@ class TrainingArguments:
             # - must be run before the model is created.
             if not is_accelerate_available():
                 raise ValueError("--deepspeed requires Accelerate to be installed: `pip install accelerate`.")
-            from transformers.deepspeed import HfTrainerDeepSpeedConfig
+            from transformers.integrations.deepspeed import HfTrainerDeepSpeedConfig
 
             # will be used later by the Trainer
             # note: leave self.deepspeed unmodified in case a user relies on it not to be modified)
@@ -1568,6 +1707,14 @@ class TrainingArguments:
 
             os.environ["ACCELERATE_USE_DEEPSPEED"] = "true"
             self.deepspeed_plugin = DeepSpeedPlugin(hf_ds_config=self.hf_deepspeed_config)
+        elif strtobool(os.environ.get("ACCELERATE_USE_DEEPSPEED", "false")):
+            # Accelerate DeepSpeed Plugin
+            from accelerate.utils import DeepSpeedPlugin
+
+            self.deepspeed_plugin = DeepSpeedPlugin()
+            mixed_precision = os.environ.get("ACCELERATE_MIXED_PRECISION", "no")
+            self.deepspeed_plugin.set_mixed_precision(mixed_precision)
+            self.deepspeed_plugin.set_deepspeed_weakref()
 
         if self.push_to_hub_token is not None:
             warnings.warn(
@@ -1603,15 +1750,6 @@ class TrainingArguments:
                 f"{self.hub_model_id}).",
                 FutureWarning,
             )
-
-        # if training args is specified, it will override the one specified in the accelerate config
-        if self.half_precision_backend != "apex" and len(self.sharded_ddp) == 0:
-            mixed_precision_dtype = os.environ.get("ACCELERATE_MIXED_PRECISION", "no")
-            if self.fp16:
-                mixed_precision_dtype = "fp16"
-            elif self.bf16:
-                mixed_precision_dtype = "bf16"
-            os.environ["ACCELERATE_MIXED_PRECISION"] = mixed_precision_dtype
 
     def __str__(self):
         self_as_dict = asdict(self)
@@ -1674,7 +1812,9 @@ class TrainingArguments:
                 )
             AcceleratorState._reset_state(reset_partial_state=True)
         self.distributed_state = None
-        if self.no_cuda:
+        if not self.use_ipex and "ACCELERATE_USE_IPEX" not in os.environ:
+            os.environ["ACCELERATE_USE_IPEX"] = "false"
+        if self.use_cpu or strtobool(os.environ.get("ACCELERATE_USE_CPU", "False")):
             self.distributed_state = PartialState(cpu=True, backend=self.ddp_backend)
             self._n_gpu = 0
         elif is_sagemaker_mp_enabled():
@@ -1682,6 +1822,11 @@ class TrainingArguments:
             device = torch.device("cuda", local_rank)
             self._n_gpu = 1
             torch.cuda.set_device(device)
+        elif is_torch_xpu_available() and "ACCELERATE_USE_XPU" not in os.environ:
+            os.environ["ACCELERATE_USE_XPU"] = "true"
+            self.distributed_state = PartialState(timeout=timedelta(seconds=self.ddp_timeout))
+            device = torch.device("xpu:0")
+            self._n_gpu = 1
         elif is_sagemaker_dp_enabled():
             self.distributed_state = PartialState(_use_sagemaker_dp=True)
             self._n_gpu = 1
@@ -1692,16 +1837,14 @@ class TrainingArguments:
             del os.environ["ACCELERATE_USE_DEEPSPEED"]
             self._n_gpu = 1
         else:
-            self.distributed_state = PartialState(backend=self.ddp_backend)
+            self.distributed_state = PartialState(
+                backend=self.ddp_backend, timeout=timedelta(seconds=self.ddp_timeout)
+            )
             self._n_gpu = 1
         if not is_sagemaker_mp_enabled():
             device = self.distributed_state.device
             self.local_rank = self.distributed_state.local_process_index
-        if (
-            torch.distributed.is_available()
-            and torch.distributed.is_initialized()
-            and self.parallel_mode != ParallelMode.DISTRIBUTED
-        ):
+        if dist.is_available() and dist.is_initialized() and self.parallel_mode != ParallelMode.DISTRIBUTED:
             logger.warning(
                 "torch.distributed process group is initialized, but parallel_mode != ParallelMode.DISTRIBUTED. "
                 "In order to use Torch DDP, launch your script with `python -m torch.distributed.launch"
@@ -1712,34 +1855,37 @@ class TrainingArguments:
         elif is_sagemaker_dp_enabled() or is_sagemaker_mp_enabled():
             # Already set _n_gpu
             pass
+        elif self.distributed_state.distributed_type == DistributedType.MULTI_XPU:
+            if "ACCELERATE_USE_XPU" not in os.environ:
+                os.environ["ACCELERATE_USE_XPU"] = "true"
+            self._n_gpu = torch.xpu.device_count()
+            device = torch.device("xpu:0")
+            torch.xpu.set_device(device)
         elif self.distributed_state.distributed_type == DistributedType.NO:
             if self.use_mps_device:
-                if not torch.backends.mps.is_available():
-                    if not torch.backends.mps.is_built():
-                        raise AssertionError(
-                            "MPS not available because the current PyTorch install was not "
-                            "built with MPS enabled. Please install torch version >=1.12.0 on "
-                            "your Apple silicon Mac running macOS 12.3 or later with a native "
-                            "version (arm64) of Python"
-                        )
-                    else:
-                        raise AssertionError(
-                            "MPS not available because the current MacOS version is not 12.3+ "
-                            "and/or you do not have an MPS-enabled device on this machine."
-                        )
-                else:
-                    if not version.parse(version.parse(torch.__version__).base_version) > version.parse("1.12.0"):
-                        warnings.warn(
-                            "We strongly recommend to install PyTorch >= 1.13 (nightly version at the time of writing)"
-                            " on your MacOS machine. It has major fixes related to model correctness and performance"
-                            " improvements for transformer based models. Please refer to"
-                            " https://github.com/pytorch/pytorch/issues/82707 for more details."
-                        )
-                    device = torch.device("mps")
-                    self._n_gpu = 1
-            elif self.no_cuda:
+                warnings.warn(
+                    "`use_mps_device` is deprecated and will be removed in version 5.0 of 🤗 Transformers. "
+                    "`mps` device will be used by default if available similar to the way `cuda` device is used."
+                    "Therefore, no action from user is required. "
+                )
+                if device.type != "mps":
+                    raise ValueError(
+                        "Either you do not have an MPS-enabled device on this machine or MacOS version is not 12.3+ "
+                        "or current PyTorch install was not built with MPS enabled."
+                    )
+            if device.type == "mps":
+                self._n_gpu = 1
+            elif self.use_cpu:
                 device = torch.device("cpu")
                 self._n_gpu = 0
+            elif is_torch_xpu_available():
+                device = torch.device("xpu:0")
+                torch.xpu.set_device(device)
+                self._n_gpu = 1
+            elif is_torch_npu_available():
+                device = torch.device("npu:0")
+                torch.npu.set_device(device)
+                self._n_gpu = 1
             else:
                 # if n_gpu is > 1 we'll use nn.DataParallel.
                 # If you only want to use a specific subset of GPUs use `CUDA_VISIBLE_DEVICES=0`
@@ -1811,15 +1957,10 @@ class TrainingArguments:
         The number of processes used in parallel.
         """
         requires_backends(self, ["torch"])
-
-        if is_torch_tpu_available():
-            return xm.xrt_world_size()
+        if self.distributed_state is not None:
+            return self.distributed_state.num_processes
         elif is_sagemaker_mp_enabled():
             return smp.dp_size() if not smp.state.cfg.prescaled_batch else smp.rdp_size()
-        elif is_sagemaker_dp_enabled():
-            return dist.get_world_size()
-        elif self.parallel_mode == ParallelMode.DISTRIBUTED:
-            return torch.distributed.get_world_size()
         return 1
 
     @property
@@ -1828,14 +1969,10 @@ class TrainingArguments:
         The index of the current process used.
         """
         requires_backends(self, ["torch"])
-        if is_torch_tpu_available():
-            return xm.get_ordinal()
+        if self.distributed_state is not None:
+            return self.distributed_state.process_index
         elif is_sagemaker_mp_enabled():
             return smp.dp_rank() if not smp.state.cfg.prescaled_batch else smp.rdp_rank()
-        elif is_sagemaker_dp_enabled():
-            return dist.get_rank()
-        elif self.parallel_mode == ParallelMode.DISTRIBUTED:
-            return torch.distributed.get_rank()
         return 0
 
     @property
@@ -1844,14 +1981,11 @@ class TrainingArguments:
         The index of the local process used.
         """
         requires_backends(self, ["torch"])
-        if is_torch_tpu_available():
-            return xm.get_local_ordinal()
+
+        if self.distributed_state is not None:
+            return self.distributed_state.local_process_index
         elif is_sagemaker_mp_enabled():
             return smp.local_rank()
-        elif is_sagemaker_dp_enabled():
-            return dist.get_rank()
-        elif self.parallel_mode == ParallelMode.DISTRIBUTED:
-            return self.local_rank
         return 0
 
     @property
@@ -1940,25 +2074,23 @@ class TrainingArguments:
 
         """
         if is_torch_available() and self.world_size > 1:
-            main_process_desc = "main process"
-            if local:
-                is_main_process = self.local_process_index == 0
-                main_process_desc = "main local process"
+            main_process_desc = "main local process" if local else "main process"
+            if self.distributed_state is not None:
+                is_main_process = (
+                    self.distributed_state.is_local_main_process if local else self.distributed_state.is_main_process
+                )
             elif is_sagemaker_mp_enabled():
                 is_main_process = smp.rank() == 0
-            else:
-                is_main_process = self.process_index == 0
 
             try:
                 if not is_main_process:
                     # tell all replicas to wait
                     logger.debug(f"{self.process_index}: waiting for the {main_process_desc} to perform {desc}")
+
                     if is_torch_tpu_available():
                         xm.rendezvous(desc)
-                    elif is_sagemaker_dp_enabled():
-                        dist.barrier()
                     else:
-                        torch.distributed.barrier()
+                        dist.barrier()
                 yield
             finally:
                 if is_main_process:
@@ -1966,10 +2098,8 @@ class TrainingArguments:
                     logger.debug(f"{self.process_index}: {main_process_desc} completed {desc}, releasing all replicas")
                     if is_torch_tpu_available():
                         xm.rendezvous(desc)
-                    elif is_sagemaker_dp_enabled():
-                        dist.barrier()
                     else:
-                        torch.distributed.barrier()
+                        dist.barrier()
         else:
             yield
 
@@ -2105,7 +2235,7 @@ class TrainingArguments:
         jit_mode: bool = False,
     ):
         """
-        A method that regroups all arguments linked to the evaluation.
+        A method that regroups all arguments linked to evaluation.
 
         Args:
             strategy (`str` or [`~trainer_utils.IntervalStrategy`], *optional*, defaults to `"no"`):
@@ -2203,7 +2333,7 @@ class TrainingArguments:
         on_each_node: bool = False,
     ):
         """
-        A method that regroups all arguments linked to the evaluation.
+        A method that regroups all arguments linked to checkpoint saving.
 
         Args:
             strategy (`str` or [`~trainer_utils.IntervalStrategy`], *optional*, defaults to `"steps"`):
@@ -2256,7 +2386,7 @@ class TrainingArguments:
         replica_level: str = "passive",
     ):
         """
-        A method that regroups all arguments linked to the evaluation.
+        A method that regroups all arguments linked to logging.
 
         Args:
             strategy (`str` or [`~trainer_utils.IntervalStrategy`], *optional*, defaults to `"steps"`):
@@ -2272,10 +2402,11 @@ class TrainingArguments:
                 Logger log level to use on the main process. Possible choices are the log levels as strings: `"debug"`,
                 `"info"`, `"warning"`, `"error"` and `"critical"`, plus a `"passive"` level which doesn't set anything
                 and lets the application set the level.
-            report_to (`str` or `List[str]`, *optional*, defaults to `"none"`):
+            report_to (`str` or `List[str]`, *optional*, defaults to `"all"`):
                 The list of integrations to report the results and logs to. Supported platforms are `"azure_ml"`,
-                `"comet_ml"`, `"mlflow"`, `"neptune"`, `"tensorboard"`,`"clearml"` and `"wandb"`. Use `"all"` to report
-                to all integrations installed, `"none"` for no integrations.
+                `"clearml"`, `"codecarbon"`, `"comet_ml"`, `"dagshub"`, `"dvclive"`, `"flyte"`, `"mlflow"`,
+                `"neptune"`, `"tensorboard"`, and `"wandb"`. Use `"all"` to report to all integrations installed,
+                `"none"` for no integrations.
             first_step (`bool`, *optional*, defaults to `False`):
                 Whether to log and evaluate the first `global_step` or not.
             nan_inf_filter (`bool`, *optional*, defaults to `True`):
@@ -2324,6 +2455,7 @@ class TrainingArguments:
         strategy: Union[str, HubStrategy] = "every_save",
         token: Optional[str] = None,
         private_repo: bool = False,
+        always_push: bool = False,
     ):
         """
         A method that regroups all arguments linked to synchronizing checkpoints with the Hub.
@@ -2364,6 +2496,9 @@ class TrainingArguments:
                 with `huggingface-cli login`.
             private_repo (`bool`, *optional*, defaults to `False`):
                 If True, the Hub repo will be set to private.
+            always_push (`bool`, *optional*, defaults to `False`):
+                Unless this is `True`, the `Trainer` will skip pushing a checkpoint when the previous push is not
+                finished.
 
         Example:
 
@@ -2381,11 +2516,12 @@ class TrainingArguments:
         self.hub_strategy = HubStrategy(strategy)
         self.hub_token = token
         self.hub_private_repo = private_repo
+        self.hub_always_push = always_push
         return self
 
     def set_optimizer(
         self,
-        name: Union[str, OptimizerNames] = "adamw_hf",
+        name: Union[str, OptimizerNames] = "adamw_torch",
         learning_rate: float = 5e-5,
         weight_decay: float = 0,
         beta1: float = 0.9,
@@ -2397,7 +2533,7 @@ class TrainingArguments:
         A method that regroups all arguments linked to the optimizer and its hyperparameters.
 
         Args:
-            name (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_hf"`):
+            name (`str` or [`training_args.OptimizerNames`], *optional*, defaults to `"adamw_torch"`):
                 The optimizer to use: `"adamw_hf"`, `"adamw_torch"`, `"adamw_torch_fused"`, `"adamw_apex_fused"`,
                 `"adamw_anyprecision"` or `"adafactor"`.
             learning_rate (`float`, *optional*, defaults to 5e-5):

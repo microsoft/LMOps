@@ -555,7 +555,7 @@ class TFT5Block(tf.keras.layers.Layer):
             if len(past_key_value) != expected_num_past_key_values:
                 raise ValueError(
                     f"There should be {expected_num_past_key_values} past states. "
-                    f"{'2 (past / key) for cross attention' if expected_num_past_key_values == 4 else ''}."
+                    f"{'2 (past / key) for cross attention' if expected_num_past_key_values == 4 else ''}. "
                     f"Got {len(past_key_value)} past key / value states"
                 )
 
@@ -960,7 +960,7 @@ T5_INPUTS_DOCSTRING = r"""
             Indices of input sequence tokens in the vocabulary. T5 is a model with relative position embeddings so you
             should be able to pad the inputs on the right or the left.
 
-            Indices can be obtained using [`BertTokenizer`]. See [`PreTrainedTokenizer.__call__`] and
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.__call__`] and
             [`PreTrainedTokenizer.encode`] for details.
 
             [What are input IDs?](../glossary#input-ids)

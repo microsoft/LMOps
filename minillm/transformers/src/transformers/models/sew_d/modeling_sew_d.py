@@ -26,7 +26,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss, LayerNorm
 
 from ...activations import ACT2FN
-from ...deepspeed import is_deepspeed_zero3_enabled
+from ...integrations.deepspeed import is_deepspeed_zero3_enabled
 from ...modeling_outputs import BaseModelOutput, CausalLMOutput, SequenceClassifierOutput
 from ...modeling_utils import PreTrainedModel
 from ...pytorch_utils import softmax_backward_data
@@ -453,15 +453,8 @@ class SEWDFeatureEncoder(nn.Module):
 
         for conv_layer in self.conv_layers:
             if self._requires_grad and self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs)
-
-                    return custom_forward
-
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(conv_layer),
+                hidden_states = self._gradient_checkpointing_func(
+                    conv_layer.__call__,
                     hidden_states,
                 )
             else:
@@ -789,7 +782,7 @@ class DisentangledSelfAttention(nn.Module):
         if "p2c" in self.pos_att_type:
             scale_factor += 1
         scale = torch.sqrt(torch.tensor(query_layer.size(-1), dtype=torch.float) * scale_factor)
-        attention_scores = torch.bmm(query_layer, key_layer.transpose(-1, -2)) / scale.to(dtype=query_layer.dtype)
+        attention_scores = torch.bmm(query_layer, key_layer.transpose(-1, -2) / scale.to(dtype=query_layer.dtype))
         if self.relative_attention:
             rel_embeddings = self.pos_dropout(rel_embeddings)
             rel_att = self.disentangled_attention_bias(
@@ -1134,20 +1127,14 @@ class SEWDTransformerEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (output_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                output_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                output_states = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     next_kv,
                     attention_mask,
                     query_states,
                     relative_pos,
                     rel_embeddings,
+                    output_attentions,
                 )
             else:
                 output_states = layer_module(
@@ -1257,7 +1244,6 @@ class SEWDPreTrainedModel(PreTrainedModel):
     config_class = SEWDConfig
     base_model_prefix = "sew-d"
     main_input_name = "input_values"
-    _keys_to_ignore_on_load_missing = [r"position_ids"]
     supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
@@ -1322,10 +1308,6 @@ class SEWDPreTrainedModel(PreTrainedModel):
         attention_mask[(torch.arange(attention_mask.shape[0], device=attention_mask.device), output_lengths - 1)] = 1
         attention_mask = attention_mask.flip([-1]).cumsum(-1).flip([-1]).bool()
         return attention_mask
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, SEWDTransformerEncoder):
-            module.gradient_checkpointing = value
 
 
 SEWD_START_DOCSTRING = r"""
@@ -1509,11 +1491,13 @@ class SEWDModel(SEWDPreTrainedModel):
 )
 # Copied from transformers.models.wav2vec2.modeling_wav2vec2.Wav2Vec2ForCTC with Wav2Vec2->SEWD, wav2vec2->sew_d, WAV_2_VEC_2->SEWD
 class SEWDForCTC(SEWDPreTrainedModel):
-    def __init__(self, config, target_lang=None):
+    def __init__(self, config, target_lang: Optional[str] = None):
         super().__init__(config)
 
         self.sew_d = SEWDModel(config)
         self.dropout = nn.Dropout(config.final_dropout)
+
+        self.target_lang = target_lang
 
         if config.vocab_size is None:
             raise ValueError(
@@ -1527,15 +1511,29 @@ class SEWDForCTC(SEWDPreTrainedModel):
         )
         self.lm_head = nn.Linear(output_hidden_size, config.vocab_size)
 
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def tie_weights(self):
+        """
+        This method overwrites [`~PreTrainedModel.tie_weights`] so that adapter weights can be correctly loaded when
+        passing `target_lang=...` to `from_pretrained(...)`.
+
+        This method is **not** supposed to be called by the user and is prone to be changed in the future.
+        """
+
+        # Note that `tie_weights` is usually used to tie input and output embedding weights. The method is re-purposed to
+        # correctly load adapter layers for SEWD so that we do not have to introduce a new API to
+        # [`PreTrainedModel`]. While slightly hacky, SEWD never has to tie input and output embeddings, so that it is
+        # ok to repurpose this function here.
+        target_lang = self.target_lang
+
         if target_lang is not None and getattr(self.config, "adapter_attn_dim", None) is None:
             raise ValueError(f"Cannot pass `target_lang`: {target_lang} if `config.adapter_attn_dim` is not defined.")
         elif target_lang is None and getattr(self.config, "adapter_attn_dim", None) is not None:
             logger.info("By default `target_lang` is set to 'eng'.")
         elif target_lang is not None:
-            self.load_adapter(target_lang)
-
-        # Initialize weights and apply final processing
-        self.post_init()
+            self.load_adapter(target_lang, force_load=True)
 
     def freeze_feature_extractor(self):
         """
@@ -1543,7 +1541,7 @@ class SEWDForCTC(SEWDPreTrainedModel):
         not be updated during training.
         """
         warnings.warn(
-            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5."
+            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5. "
             "Please use the equivalent `freeze_feature_encoder` method instead.",
             FutureWarning,
         )
@@ -1555,6 +1553,14 @@ class SEWDForCTC(SEWDPreTrainedModel):
         not be updated during training.
         """
         self.sew_d.feature_extractor._freeze_parameters()
+
+    def freeze_base_model(self):
+        """
+        Calling this function will disable the gradient computation for the base model so that its parameters will not
+        be updated during training. Only the classification head will be updated.
+        """
+        for param in self.sew_d.parameters():
+            param.requires_grad = False
 
     @add_start_docstrings_to_model_forward(SEWD_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
@@ -1668,7 +1674,7 @@ class SEWDForSequenceClassification(SEWDPreTrainedModel):
         not be updated during training.
         """
         warnings.warn(
-            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5."
+            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5. "
             "Please use the equivalent `freeze_feature_encoder` method instead.",
             FutureWarning,
         )

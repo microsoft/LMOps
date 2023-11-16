@@ -86,7 +86,7 @@ class SwiftFormerPatchEmbedding(nn.Module):
 
 
 # Copied from transformers.models.beit.modeling_beit.drop_path
-def drop_path(x, drop_prob: float = 0.0, training: bool = False):
+def drop_path(input: torch.Tensor, drop_prob: float = 0.0, training: bool = False) -> torch.Tensor:
     """
     Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
@@ -441,10 +441,6 @@ class SwiftFormerPreTrainedModel(PreTrainedModel):
         elif isinstance(module, (nn.LayerNorm)):
             nn.init.constant_(module.bias, 0)
             nn.init.constant_(module.weight, 1.0)
-
-    def _set_gradient_checkpointing(self, module: SwiftFormerEncoder, value: bool = False) -> None:
-        if isinstance(module, SwiftFormerEncoder):
-            module.gradient_checkpointing = value
 
 
 SWIFTFORMER_START_DOCSTRING = r"""
