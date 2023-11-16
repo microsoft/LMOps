@@ -451,8 +451,10 @@ class TFWav2Vec2WeightNormConv1D(tf.keras.layers.Conv1D):
     def build(self, input_shape):
         if not self.built:
             input_shape = input_shape.as_list()
-            # Conv1D output shapes are checked at build time since TF 2.7, so we need to account for padding
-            input_shape[-2] += self.explicit_padding * 2
+            # If a specific input shape is passed in, we need to modify it to account for padding
+            # Not necessary if those portions of the shape are None
+            if input_shape[-2] is not None:
+                input_shape[-2] += self.explicit_padding * 2
             super().build(input_shape)
 
             self.kernel = tf.Variable(tf.transpose(self.kernel), name="weight_v", trainable=True)
@@ -1202,7 +1204,7 @@ class TFWav2Vec2PreTrainedModel(TFPreTrainedModel):
         super().__init__(config, *inputs, **kwargs)
         logger.warning(
             f"\n{self.__class__.__name__} has backpropagation operations that are NOT supported on CPU. If you wish "
-            "to train/fine-tine this model, you need a GPU or a TPU"
+            "to train/fine-tune this model, you need a GPU or a TPU"
         )
 
     def _get_feat_extract_output_lengths(self, input_lengths, add_adapter=None):
@@ -1436,7 +1438,7 @@ class TFWav2Vec2ForCTC(TFWav2Vec2PreTrainedModel):
         not be updated during training.
         """
         warnings.warn(
-            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5."
+            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5. "
             "Please use the equivalent `freeze_feature_encoder` method instead.",
             FutureWarning,
         )
@@ -1591,7 +1593,7 @@ class TFWav2Vec2ForSequenceClassification(TFWav2Vec2PreTrainedModel):
         not be updated during training.
         """
         warnings.warn(
-            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5."
+            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5. "
             "Please use the equivalent `freeze_feature_encoder` method instead.",
             FutureWarning,
         )
@@ -1617,12 +1619,12 @@ class TFWav2Vec2ForSequenceClassification(TFWav2Vec2PreTrainedModel):
         self,
         input_values: tf.Tensor,
         attention_mask: tf.Tensor | None = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+        output_attentions: bool | None = None,
+        output_hidden_states: bool | None = None,
+        return_dict: bool | None = None,
         labels: tf.Tensor | None = None,
         training: bool = False,
-    ):
+    ) -> TFSequenceClassifierOutput | Tuple[tf.Tensor]:
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         output_hidden_states = True if self.config.use_weighted_layer_sum else output_hidden_states
 
@@ -1646,7 +1648,7 @@ class TFWav2Vec2ForSequenceClassification(TFWav2Vec2PreTrainedModel):
         if attention_mask is None:
             pooled_output = tf.reduce_mean(hidden_states, axis=1)
         else:
-            padding_mask = self._get_feature_vector_attention_mask(hidden_states.shape[1], attention_mask)
+            padding_mask = self._get_feature_vector_attention_mask(shape_list(hidden_states)[1], attention_mask)
             padding_mask_float = tf.cast(padding_mask, hidden_states.dtype)
             hidden_states = tf.multiply(hidden_states, tf.expand_dims(padding_mask_float, axis=-1))
             pooled_output = tf.divide(

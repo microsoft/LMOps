@@ -417,8 +417,10 @@ class TFHubertWeightNormConv1D(tf.keras.layers.Conv1D):
     def build(self, input_shape):
         if not self.built:
             input_shape = input_shape.as_list()
-            # Conv1D output shapes are checked at build time since TF 2.7, so we need to account for padding
-            input_shape[-2] += self.explicit_padding * 2
+            # If a specific input shape is passed in, we need to modify it to account for padding
+            # Not necessary if those portions of the shape are None
+            if input_shape[-2] is not None:
+                input_shape[-2] += self.explicit_padding * 2
             super().build(input_shape)
 
             self.kernel = tf.Variable(tf.transpose(self.kernel), name="weight_v", trainable=True)
@@ -1168,7 +1170,7 @@ class TFHubertPreTrainedModel(TFPreTrainedModel):
         super().__init__(config, *inputs, **kwargs)
         logger.warning(
             f"\n{self.__class__.__name__} has backpropagation operations that are NOT supported on CPU. If you wish "
-            "to train/fine-tine this model, you need a GPU or a TPU"
+            "to train/fine-tune this model, you need a GPU or a TPU"
         )
 
 
@@ -1362,7 +1364,7 @@ class TFHubertForCTC(TFHubertPreTrainedModel):
         not be updated during training.
         """
         warnings.warn(
-            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5."
+            "The method `freeze_feature_extractor` is deprecated and will be removed in Transformers v5. "
             "Please use the equivalent `freeze_feature_encoder` method instead.",
             FutureWarning,
         )

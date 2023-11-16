@@ -32,6 +32,8 @@ if is_torch_available():
 
     from transformers import TimmBackbone, TimmBackboneConfig
 
+from ...test_pipeline_mixin import PipelineTesterMixin
+
 
 class TimmBackboneModelTester:
     def __init__(
@@ -40,7 +42,7 @@ class TimmBackboneModelTester:
         out_indices=None,
         out_features=None,
         stage_names=None,
-        backbone="resnet50",
+        backbone="resnet18",
         batch_size=3,
         image_size=32,
         num_channels=3,
@@ -95,16 +97,18 @@ class TimmBackboneModelTester:
 
 @require_torch
 @require_timm
-class TimmBackboneModelTest(ModelTesterMixin, BackboneTesterMixin, unittest.TestCase):
+class TimmBackboneModelTest(ModelTesterMixin, BackboneTesterMixin, PipelineTesterMixin, unittest.TestCase):
     all_model_classes = (TimmBackbone,) if is_torch_available() else ()
+    pipeline_model_mapping = {"feature-extraction": TimmBackbone} if is_torch_available() else {}
     test_resize_embeddings = False
     test_head_masking = False
     test_pruning = False
     has_attentions = False
 
     def setUp(self):
+        self.config_class = PretrainedConfig
         self.model_tester = TimmBackboneModelTester(self)
-        self.config_tester = ConfigTester(self, config_class=PretrainedConfig, has_text_modality=False)
+        self.config_tester = ConfigTester(self, config_class=self.config_class, has_text_modality=False)
 
     def test_config(self):
         self.config_tester.create_and_test_config_to_json_string()
@@ -173,6 +177,14 @@ class TimmBackboneModelTest(ModelTesterMixin, BackboneTesterMixin, unittest.Test
     def test_tied_model_weights_key_ignore(self):
         pass
 
+    @unittest.skip("Only checkpoints on timm can be loaded into TimmBackbone")
+    def test_load_save_without_tied_weights(self):
+        pass
+
+    @unittest.skip("Only checkpoints on timm can be loaded into TimmBackbone")
+    def test_model_weights_reload_no_missing_tied_weights(self):
+        pass
+
     @unittest.skip("TimmBackbone doesn't have hidden size info in its configuration.")
     def test_channels(self):
         pass
@@ -183,6 +195,10 @@ class TimmBackboneModelTest(ModelTesterMixin, BackboneTesterMixin, unittest.Test
 
     @unittest.skip("Safetensors is not supported by timm.")
     def test_can_use_safetensors(self):
+        pass
+
+    @unittest.skip("Need to use a timm backbone and there is no tiny model available.")
+    def test_model_is_small(self):
         pass
 
     def test_forward_signature(self):

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import copy
+import gc
 import glob
 import inspect
 import math
@@ -129,7 +130,7 @@ class TFWav2Vec2ModelTester:
         conv_bias=False,
         num_conv_pos_embeddings=16,
         num_conv_pos_embedding_groups=2,
-        num_hidden_layers=4,
+        num_hidden_layers=2,
         num_attention_heads=2,
         hidden_dropout_prob=0.1,  # this is most likely not correctly set yet
         intermediate_size=20,
@@ -305,7 +306,7 @@ class TFWav2Vec2ModelTester:
         model = TFWav2Vec2ForCTC(config)
         input_lengths = tf.constant([input_values.shape[-1] // i for i in [4, 2, 1]])
         max_length_labels = model.wav2vec2._get_feat_extract_output_lengths(input_lengths)
-        labels = ids_tensor((input_values.shape[0], min(max_length_labels) - 1), model.config.vocab_size + 100)
+        labels = ids_tensor((input_values.shape[0], min(max_length_labels) - 1), model.config.vocab_size + 500)
         with pytest.raises(ValueError):
             model(input_values, labels=labels)
 
@@ -321,7 +322,7 @@ class TFWav2Vec2ModelTest(TFModelTesterMixin, PipelineTesterMixin, unittest.Test
         (TFWav2Vec2Model, TFWav2Vec2ForCTC, TFWav2Vec2ForSequenceClassification) if is_tf_available() else ()
     )
     pipeline_model_mapping = (
-        {"feature-extraction": TFWav2Vec2Model, "audio-classification": TFWav2Vec2ForSequenceClassification}
+        {"audio-classification": TFWav2Vec2ForSequenceClassification, "feature-extraction": TFWav2Vec2Model}
         if is_tf_available()
         else {}
     )
@@ -427,20 +428,15 @@ class TFWav2Vec2ModelTest(TFModelTesterMixin, PipelineTesterMixin, unittest.Test
         model = TFWav2Vec2Model.from_pretrained("facebook/wav2vec2-base-960h")
         self.assertIsNotNone(model)
 
-    # We override here as passing a full batch of 13 samples results in OOM errors for CTC
-    @unittest.skip("Fix me!")
+    @unittest.skip(reason="Fix me! Wav2Vec2 hits OOM errors when loss is computed on full batch")
     def test_dataset_conversion(self):
-        default_batch_size = self.model_tester.batch_size
-        self.model_tester.batch_size = 2
-        super().test_dataset_conversion()
-        self.model_tester.batch_size = default_batch_size
+        # TODO: (Amy) - check whether skipping CTC model resolves this issue and possible resolutions for CTC
+        pass
 
-    # We override here as passing a full batch of 13 samples results in OOM errors for CTC
+    @unittest.skip(reason="Fix me! Wav2Vec2 hits OOM errors when loss is computed on full batch")
     def test_keras_fit(self):
-        default_batch_size = self.model_tester.batch_size
-        self.model_tester.batch_size = 2
-        super().test_keras_fit()
-        self.model_tester.batch_size = default_batch_size
+        # TODO: (Amy) - check whether skipping CTC model resolves this issue and possible resolutions for CTC
+        pass
 
     @is_pt_tf_cross_test
     def test_pt_tf_model_equivalence(self, allow_missing_keys=False):
@@ -714,6 +710,11 @@ class TFWav2Vec2UtilsTest(unittest.TestCase):
 @require_tf
 @slow
 class TFWav2Vec2ModelIntegrationTest(unittest.TestCase):
+    def tearDown(self):
+        super().tearDown()
+        # clean-up as much as possible GPU memory occupied by PyTorch
+        gc.collect()
+
     def _load_datasamples(self, num_samples):
         ds = load_dataset("hf-internal-testing/librispeech_asr_dummy", "clean", split="validation")
         # automatic decoding with librispeech

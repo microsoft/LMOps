@@ -286,7 +286,7 @@ class GPTSanJapaneseSparseMLP(nn.Module):
         next_states = hidden_states.clone()
         for idx, expert in enumerate(self.experts.values()):
             token_indices = router_mask[:, :, idx].bool()
-            next_states[token_indices] = expert(hidden_states[token_indices])
+            next_states[token_indices] = expert(hidden_states[token_indices]).to(next_states.dtype)
 
         hidden_states = router_probs * next_states
         return hidden_states, (router_logits, expert_index)
@@ -370,12 +370,15 @@ class GPTSanJapaneseAttention(nn.Module):
         dropout: float = 0.0,
         is_decoder: bool = False,
         bias: bool = True,
+        is_causal: bool = False,
+        config: Optional[GPTSanJapaneseConfig] = None,
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.dropout = dropout
         self.head_dim = embed_dim // num_heads
+        self.config = config
 
         if (self.head_dim * num_heads) != self.embed_dim:
             raise ValueError(
@@ -384,6 +387,7 @@ class GPTSanJapaneseAttention(nn.Module):
             )
         self.scaling = self.head_dim**-0.5
         self.is_decoder = is_decoder
+        self.is_causal = is_causal
 
         self.k_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.v_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
@@ -759,10 +763,6 @@ class GPTSanJapanesePreTrainedModel(PreTrainedModel):
                 module.experts[f"expert_{idx}"].wi.weight.data.normal_(mean=0.0, std=factor * (d_model**-0.5))
                 module.experts[f"expert_{idx}"].wo.weight.data.normal_(mean=0.0, std=factor * (d_model**-0.5))
 
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, (GPTSanJapaneseAttention,)):
-            module.gradient_checkpointing = value
-
     # Copied from transformers.models.t5.modeling_t5.T5PreTrainedModel._shift_right
     def _shift_right(self, input_ids):
         decoder_start_token_id = self.config.decoder_start_token_id
@@ -770,7 +770,7 @@ class GPTSanJapanesePreTrainedModel(PreTrainedModel):
 
         if decoder_start_token_id is None:
             raise ValueError(
-                "self.model.config.decoder_start_token_id has to be defined. In T5 it is usually set to the pad_token_id."
+                "self.model.config.decoder_start_token_id has to be defined. In T5 it is usually set to the pad_token_id. "
                 "See T5 docs for more information."
             )
 
@@ -1111,7 +1111,7 @@ class GPTSanJapaneseModel(GPTSanJapanesePreTrainedModel):
     GPTSAN_JAPANESE_START_DOCSTRING,
 )
 class GPTSanJapaneseForConditionalGeneration(GPTSanJapanesePreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"lm_head.weight"]
+    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config: GPTSanJapaneseConfig):
         super().__init__(config)
@@ -1313,9 +1313,9 @@ class GPTSanJapaneseForConditionalGeneration(GPTSanJapanesePreTrainedModel):
         return self._shift_right(labels)
 
     # Copied from transformers.models.mbart.modeling_mbart.MBartForConditionalGeneration.resize_token_embeddings with MBart->GPTSanJapanese
-    def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
-        new_embeddings = super().resize_token_embeddings(new_num_tokens)
-        self._resize_final_logits_bias(new_num_tokens)
+    def resize_token_embeddings(self, new_num_tokens: int, pad_to_multiple_of: Optional[int] = None) -> nn.Embedding:
+        new_embeddings = super().resize_token_embeddings(new_num_tokens, pad_to_multiple_of)
+        self._resize_final_logits_bias(new_embeddings.weight.shape[0])
         return new_embeddings
 
     # Copied from transformers.models.mbart.modeling_mbart.MBartForConditionalGeneration._resize_final_logits_bias with MBart->GPTSanJapanese
@@ -1347,7 +1347,7 @@ class GPTSanJapaneseForConditionalGeneration(GPTSanJapanesePreTrainedModel):
         total_router_logits = []
         total_expert_indexes = []
         for router_output in router_outputs:
-            if router_output[0] is not None:
+            if len(router_output[0].shape) > 1:
                 router_logits, expert_indexes = router_output
                 total_router_logits.append(router_logits)
                 total_expert_indexes.append(expert_indexes)
