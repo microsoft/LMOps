@@ -45,7 +45,7 @@ class PromptDataset(Dataset):
         self.label_map = {tokenizer.encode(x[0], add_special_tokens=False)[0]: x[0] for x in self.answers}
             
         self.num = min(num, len(self.data)) if num > 0 else len(self.data)
-        print_rank(f"Num PPO instances: {len(self.data)}")
+        print_rank(f"Num instances: {len(self.data)}")
             
     def __len__(self):
         return self.num
