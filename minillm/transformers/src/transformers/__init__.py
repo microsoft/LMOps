@@ -454,6 +454,7 @@ _import_structure = {
     "models.megatron_gpt2": [],
     "models.mgp_str": ["MGP_STR_PRETRAINED_CONFIG_ARCHIVE_MAP", "MgpstrConfig", "MgpstrProcessor", "MgpstrTokenizer"],
     "models.mistral": ["MISTRAL_PRETRAINED_CONFIG_ARCHIVE_MAP", "MistralConfig"],
+    "models.mistral_parallel": ["MISTRAL_PRETRAINED_CONFIG_ARCHIVE_MAP", "MistralConfig"],
     "models.mluke": [],
     "models.mobilebert": ["MOBILEBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "MobileBertConfig", "MobileBertTokenizer"],
     "models.mobilenet_v1": ["MOBILENET_V1_PRETRAINED_CONFIG_ARCHIVE_MAP", "MobileNetV1Config"],
@@ -890,6 +891,7 @@ else:
     _import_structure["models.layoutxlm"].append("LayoutXLMTokenizerFast")
     _import_structure["models.led"].append("LEDTokenizerFast")
     _import_structure["models.llama"].append("LlamaTokenizerFast")
+    _import_structure["models.llama_parallel"].append("LlamaTokenizerFast")
     _import_structure["models.longformer"].append("LongformerTokenizerFast")
     _import_structure["models.lxmert"].append("LxmertTokenizerFast")
     _import_structure["models.markuplm"].append("MarkupLMTokenizerFast")
@@ -2304,6 +2306,15 @@ else:
     )
     _import_structure["models.mistral"].extend(
         ["MistralForCausalLM", "MistralForSequenceClassification", "MistralModel", "MistralPreTrainedModel"]
+    )
+    _import_structure["models.mistral_parallel"].extend(
+        [
+            "ParallelMistralForCausalLM",
+            "ParallelMistralModel",
+            "ParallelMistralPreTrainedModel",
+            "decrease_mp_mistral",
+            "increase_mp_mistral"
+        ]
     )
     _import_structure["models.mobilebert"].extend(
         [
@@ -6279,6 +6290,13 @@ if TYPE_CHECKING:
             MistralForSequenceClassification,
             MistralModel,
             MistralPreTrainedModel,
+        )
+        from .models.mistral_parallel import (
+            ParallelMistralForCausalLM,
+            ParallelMistralModel,
+            ParallelMistralPreTrainedModel,
+            decrease_mp_mistral,
+            increase_mp_mistral
         )
         from .models.mobilebert import (
             MOBILEBERT_PRETRAINED_MODEL_ARCHIVE_LIST,
