@@ -402,7 +402,7 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
             #     if dist.get_rank() == rank:
             #         print(f"rank: {dist.get_rank()}", model_batch["input_ids"][0][:128])
             #     dist.barrier()
-            
+            print_rank(f"{it}/{len(dataloader)}")
             dataset.move_to_device(model_batch, no_model_batch, gen_data, device)
             logits = model(**model_batch).logits
             if args.model_parallel:
