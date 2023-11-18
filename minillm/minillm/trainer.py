@@ -559,7 +559,7 @@ class PPOTrainer():
                 save_parallel(self.model.module.base_model, ckpt_dir)
         else:
             if get_rank() == 0:
-                self.model.module.base_model.save_pretrained(ckpt_dir)
+                self.model.module.base_model.save_pretrained(ckpt_dir, safe_serialization=False)
                 # torch.save(self.model.module.value_model.state_dict(), os.path.join(ckpt_dir, "value_model.ckpt"))
                 print(f"Model save to {ckpt_dir}")
                 self.tokenizer.save_pretrained(ckpt_dir)

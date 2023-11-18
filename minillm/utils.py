@@ -132,8 +132,6 @@ def initialize(args):
 # Load and save model
 def get_model(args, device):
     config = AutoConfig.from_pretrained(args.model_path)
-    if args.dropout_path_rate is not None:
-        config.drop_path_rate = args.dropout_path_rate
     
     st_time = time.time()
     if args.model_parallel:

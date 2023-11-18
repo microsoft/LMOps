@@ -335,7 +335,7 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                         os.makedirs(save_dir_path, exist_ok=True)
                         print_rank(f"Model save to {save_dir_path}")
                         tokenizer.save_pretrained(save_dir_path)
-                        model.module.save_pretrained(save_dir_path)
+                        model.module.save_pretrained(save_dir_path, safe_serialization=False)
                 dist.barrier()
 
             # Evaluation

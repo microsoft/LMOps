@@ -118,7 +118,6 @@ class OPTConfig(PretrainedConfig):
         eos_token_id=2,
         enable_bias=True,
         layer_norm_elementwise_affine=True,
-        drop_path_rate=0.0,
         **kwargs,
     ):
         super().__init__(
@@ -144,7 +143,6 @@ class OPTConfig(PretrainedConfig):
         # We keep these variables at `True` for backward compatibility.
         self.enable_bias = enable_bias
         self.layer_norm_elementwise_affine = layer_norm_elementwise_affine
-        self.drop_path_rate=drop_path_rate
         # Note that the only purpose of `_remove_final_layer_norm` is to keep backward compatibility
         # with checkpoints that have been fine-tuned before transformers v4.20.1
         # see https://github.com/facebookresearch/metaseq/pull/164
