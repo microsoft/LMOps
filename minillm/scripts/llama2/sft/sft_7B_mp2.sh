@@ -46,7 +46,7 @@ OPTS+=" --model-parallel-size ${MP_SIZE}"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --num-workers 0"
-OPTS+=" --dev-num 1000"
+OPTS+=" --dev-num 500"
 # hp
 OPTS+=" --lr ${LR}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
