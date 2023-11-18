@@ -28,7 +28,8 @@ parallel_model_map = {
     "opt": ParallelOPTForCausalLM,
     "gptj": ParallelGPTJForCausalLM,
     "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM
+    "llama": ParallelLlamaForCausalLM,
+    "llama2": ParallelLlamaForCausalLM,
 }
 
 
@@ -146,7 +147,8 @@ def get_model(args, device):
                 sum([p.nelement() for p in model.parameters()])), flush=True)
     else:
         config.is_model_parallel = False
-        model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
+        dtype = torch.float32 if args.fp32 else torch.float16
+        model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=dtype)
 
         if args.peft is not None:
             if args.peft == "lora":
@@ -203,7 +205,7 @@ def get_optimizer_params_peft(args, model: nn.Module):
 
 def get_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    if args.model_type in ["gpt2", "opt", "llama", "gptj"]:
+    if args.model_type in ["gpt2", "opt", "llama", "gptj", "llama2"]:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
     return tokenizer

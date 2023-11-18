@@ -57,6 +57,8 @@ if is_torch_fx_available():
 
 logger = logging.get_logger(__name__)
 
+fp_factor = 16
+
 _CONFIG_FOR_DOC = "LlamaConfig"
 
 
@@ -101,7 +103,7 @@ class LlamaRMSNorm(nn.Module):
 
     def forward(self, hidden_states):
         input_dtype = hidden_states.dtype
-        hidden_states = hidden_states.to(torch.float32)
+        hidden_states = hidden_states.to(torch.float32) * fp_factor
         variance = hidden_states.pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
         return self.weight * hidden_states.to(input_dtype)
@@ -255,7 +257,10 @@ class LlamaMLP(nn.Module):
             ]
             down_proj = sum(down_proj)
         else:
-            down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+            x1 = self.up_proj(x) / fp_factor
+            x2 = self.act_fn(self.gate_proj(x))
+            x3 = x2 * x1
+            down_proj = self.down_proj(x3)
 
         return down_proj
 
@@ -444,6 +449,8 @@ class LlamaAttention(nn.Module):
             attn_output = sum([F.linear(attn_output[i], o_proj_slices[i]) for i in range(self.config.pretraining_tp)])
         else:
             attn_output = self.o_proj(attn_output)
+
+        attn_output = attn_output / fp_factor
 
         if not output_attentions:
             attn_weights = None
@@ -910,6 +917,8 @@ class LlamaModel(LlamaPreTrainedModel):
 
         # embed positions
         hidden_states = inputs_embeds
+        
+        hidden_states = hidden_states / fp_factor
 
         if self.gradient_checkpointing and self.training:
             if use_cache:
