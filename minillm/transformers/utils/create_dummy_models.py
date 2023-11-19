@@ -110,6 +110,7 @@ UNCONVERTIBLE_MODEL_ARCHITECTURES = {
     "MaskFormerSwinBackbone",
     "MT5Model",
     "MT5ForConditionalGeneration",
+    "UMT5ForConditionalGeneration",
     "TFMT5ForConditionalGeneration",
     "TFMT5Model",
     "QDQBertForSequenceClassification",
@@ -735,7 +736,7 @@ def build_model(model_arch, tiny_config, output_dir):
 
     tiny_config = copy.deepcopy(tiny_config)
 
-    if any([model_arch.__name__.endswith(x) for x in ["ForCausalLM", "LMHeadModel"]]):
+    if any(model_arch.__name__.endswith(x) for x in ["ForCausalLM", "LMHeadModel"]):
         tiny_config.is_encoder_decoder = False
         tiny_config.is_decoder = True
 
@@ -915,7 +916,7 @@ def build_composite_models(config_class, output_dir):
             model.save_pretrained(model_path)
 
             if tf_model_class is not None:
-                model = tf_model_class.from_pretrained(model_path, from_pt=True)
+                model = tf_model_class.from_pretrained(model_path)
                 model.save_pretrained(model_path)
 
             # copy the processors
@@ -973,6 +974,10 @@ def get_token_id_from_tokenizer(token_id_name, tokenizer, original_token_id):
 
 
 def get_config_overrides(config_class, processors):
+    # `Bark` configuration is too special. Let's just not handle this for now.
+    if config_class.__name__ == "BarkConfig":
+        return {}
+
     config_overrides = {}
 
     # Check if there is any tokenizer (prefer fast version if any)
@@ -1199,7 +1204,7 @@ def build(config_class, models_to_create, output_dir):
             ckpt = get_checkpoint_dir(output_dir, pt_arch)
             # Use the same weights from PyTorch.
             try:
-                model = tensorflow_arch.from_pretrained(ckpt, from_pt=True)
+                model = tensorflow_arch.from_pretrained(ckpt)
                 model.save_pretrained(ckpt)
             except Exception as e:
                 # Conversion may fail. Let's not create a model with different weights to avoid confusion (for now).
@@ -1504,7 +1509,7 @@ if __name__ == "__main__":
         "--models_to_skip",
         type=list_str,
         help=(
-            "Comma-separated list of model class names(s) from which the tiny models won't be created.\nThis is usually"
+            "Comma-separated list of model class names(s) from which the tiny models won't be created.\nThis is usually "
             "the list of model classes that have their tiny versions already uploaded to the Hub."
         ),
     )

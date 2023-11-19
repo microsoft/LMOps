@@ -19,7 +19,7 @@ import unittest
 
 from transformers import CodeGenConfig, is_torch_available
 from transformers.file_utils import cached_property
-from transformers.testing_utils import is_flaky, require_torch, slow, torch_device
+from transformers.testing_utils import backend_manual_seed, is_flaky, require_torch, slow, torch_device
 
 from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
@@ -47,7 +47,7 @@ class CodeGenModelTester:
         vocab_size=256,
         hidden_size=32,
         rotary_dim=4,
-        num_hidden_layers=5,
+        num_hidden_layers=2,
         num_attention_heads=4,
         intermediate_size=37,
         hidden_act="gelu",
@@ -498,8 +498,7 @@ class CodeGenModelLanguageGenerationTest(unittest.TestCase):
         model.to(torch_device)
 
         torch.manual_seed(0)
-        if torch_device == "cuda":
-            torch.cuda.manual_seed(0)
+        backend_manual_seed(torch_device, 0)
 
         tokenized = tokenizer("def hello_world():", return_tensors="pt", return_token_type_ids=True)
         input_ids = tokenized.input_ids.to(torch_device)
@@ -521,7 +520,7 @@ class CodeGenModelLanguageGenerationTest(unittest.TestCase):
 
         self.assertEqual(output_str, EXPECTED_OUTPUT_STR)
         self.assertTrue(
-            all([output_seq_strs[idx] != output_seq_tt_strs[idx] for idx in range(len(output_seq_tt_strs))])
+            all(output_seq_strs[idx] != output_seq_tt_strs[idx] for idx in range(len(output_seq_tt_strs)))
         )  # token_type_ids should change output
 
     @is_flaky(max_attempts=3, description="measure of timing is somehow flaky.")

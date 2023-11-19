@@ -61,7 +61,7 @@ CONVNEXT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 
 
 # Copied from transformers.models.beit.modeling_beit.drop_path
-def drop_path(input, drop_prob: float = 0.0, training: bool = False):
+def drop_path(input: torch.Tensor, drop_prob: float = 0.0, training: bool = False) -> torch.Tensor:
     """
     Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
@@ -282,7 +282,6 @@ class ConvNextPreTrainedModel(PreTrainedModel):
     config_class = ConvNextConfig
     base_model_prefix = "convnext"
     main_input_name = "pixel_values"
-    supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -295,10 +294,6 @@ class ConvNextPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, ConvNextEncoder):
-            module.gradient_checkpointing = value
 
 
 CONVNEXT_START_DOCSTRING = r"""

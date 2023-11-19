@@ -6,21 +6,10 @@ from accelerate import init_empty_weights
 
 from transformers import (
     AutoModelForCausalLM,
-    AutoConfig,
-    ParallelOPTForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,
-    ParallelLlamaForCausalLM)
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "gptj": ParallelGPTJForCausalLM,
-    "llama": ParallelLlamaForCausalLM
-}
+    AutoConfig,)
 
 from arguments import get_args
-from utils import print_args, initialize, load_parallel, get_tokenizer
+from utils import print_args, initialize, load_parallel, get_tokenizer, parallel_model_map
 
 from minillm import train, Reward
 

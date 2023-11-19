@@ -14,11 +14,18 @@
 # limitations under the License.
 
 import datetime
+import gc
 import math
 import unittest
 
 from transformers import XGLMConfig, is_torch_available
-from transformers.testing_utils import require_torch, require_torch_gpu, slow, torch_device
+from transformers.testing_utils import (
+    require_torch,
+    require_torch_accelerator,
+    require_torch_fp16,
+    slow,
+    torch_device,
+)
 
 from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
@@ -43,7 +50,7 @@ class XGLMModelTester:
         use_labels=True,
         vocab_size=99,
         d_model=32,
-        num_hidden_layers=5,
+        num_hidden_layers=2,
         num_attention_heads=4,
         ffn_dim=37,
         activation_function="gelu",
@@ -346,9 +353,23 @@ class XGLMModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin
             model = XGLMModel.from_pretrained(model_name)
             self.assertIsNotNone(model)
 
+    @unittest.skip("Does not work on the tiny model as we keep hitting edge cases.")
+    def test_model_parallelism(self):
+        super().test_model_parallelism()
+
+    @unittest.skip("This test is currently broken because of safetensors.")
+    def test_tf_from_pt_safetensors(self):
+        pass
+
 
 @require_torch
 class XGLMModelLanguageGenerationTest(unittest.TestCase):
+    def tearDown(self):
+        super().tearDown()
+        # clean-up as much as possible GPU memory occupied by PyTorch
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def _test_lm_generate_xglm_helper(
         self,
         gradient_checkpointing=False,
@@ -481,18 +502,19 @@ class XGLMModelLanguageGenerationTest(unittest.TestCase):
         duration = datetime.datetime.now() - start
         self.assertGreater(duration, datetime.timedelta(seconds=1.25 * MAX_TIME))
 
-    @require_torch_gpu
+    @require_torch_accelerator
+    @require_torch_fp16
     def test_batched_nan_fp16(self):
         model_name = "facebook/xglm-564M"
         tokenizer = XGLMTokenizer.from_pretrained(model_name, use_fast=False, padding_side="left")
 
-        model = XGLMForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, use_cache=True).cuda()
+        model = XGLMForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, use_cache=True).to(torch_device)
         model = model.eval()
 
         batch = tokenizer(["Who are you?", "Joe Biden is the president of"], padding=True, return_tensors="pt")
 
-        input_ids = batch["input_ids"].cuda()
-        attention_mask = batch["attention_mask"].cuda()
+        input_ids = batch["input_ids"].to(torch_device)
+        attention_mask = batch["attention_mask"].to(torch_device)
 
         with torch.no_grad():
             outputs = model(input_ids, attention_mask=attention_mask)

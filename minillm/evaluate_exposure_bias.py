@@ -3,18 +3,7 @@ from transformers import (
     GenerationConfig,
     AutoModelForCausalLM,
     mpu,
-    AutoConfig,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,)
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM
-}
+    AutoConfig,)
 
 import os
 import random
@@ -26,7 +15,7 @@ import torch.nn.functional as F
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
-from utils import print_rank, save_rank, load_parallel
+from utils import print_rank, save_rank, load_parallel, parallel_model_map
 
 torch.set_num_threads(4)
         

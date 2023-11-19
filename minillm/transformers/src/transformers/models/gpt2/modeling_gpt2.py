@@ -110,49 +110,14 @@ def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
                 num = int(scope_names[1])
                 pointer = pointer[num]
         try:
-            assert (
-                pointer.shape == array.shape
-            ), f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched"
-        except AssertionError as e:
+            if pointer.shape != array.shape:
+                raise ValueError(f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched")
+        except ValueError as e:
             e.args += (pointer.shape, array.shape)
             raise
         logger.info(f"Initialize PyTorch weight {name}")
         pointer.data = torch.from_numpy(array)
     return model
-
-
-def drop_path(input: torch.Tensor, drop_prob: float = 0.0, training: bool = False) -> torch.Tensor:
-    """
-    Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
-
-    Comment by Ross Wightman: This is the same as the DropConnect impl I created for EfficientNet, etc networks,
-    however, the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
-    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for changing the
-    layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use 'survival rate' as the
-    argument.
-    """
-    if drop_prob == 0.0 or not training:
-        return input
-    keep_prob = 1 - drop_prob
-    shape = (input.shape[0],) + (1,) * (input.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
-    random_tensor = keep_prob + torch.rand(shape, dtype=input.dtype, device=input.device)
-    random_tensor.floor_()  # binarize
-    output = input.div(keep_prob) * random_tensor
-    return output
-
-
-class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks)."""
-
-    def __init__(self, drop_prob: Optional[float] = None) -> None:
-        super().__init__()
-        self.drop_prob = drop_prob
-
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        return drop_path(hidden_states, self.drop_prob, self.training)
-
-    def extra_repr(self) -> str:
-        return "p={}".format(self.drop_prob)
 
 
 class GPT2Attention(nn.Module):
@@ -394,7 +359,7 @@ class GPT2MLP(nn.Module):
 
 
 class GPT2Block(nn.Module):
-    def __init__(self, config, layer_idx=None, drop_path_rate: float = 0.0):
+    def __init__(self, config, layer_idx=None):
         super().__init__()
         hidden_size = config.hidden_size
         inner_dim = config.n_inner if config.n_inner is not None else 4 * hidden_size
@@ -402,7 +367,6 @@ class GPT2Block(nn.Module):
         self.ln_1 = nn.LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
         self.attn = GPT2Attention(config, layer_idx=layer_idx)
         self.ln_2 = nn.LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
 
         if config.add_cross_attention:
             self.crossattention = GPT2Attention(config, is_cross_attention=True, layer_idx=layer_idx)
@@ -434,7 +398,7 @@ class GPT2Block(nn.Module):
         attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
         outputs = attn_outputs[1:]
         # residual connection
-        hidden_states = self.drop_path(attn_output) + residual
+        hidden_states = attn_output + residual
 
         if encoder_hidden_states is not None:
             # add one self-attention block for cross-attention
@@ -462,7 +426,7 @@ class GPT2Block(nn.Module):
         hidden_states = self.ln_2(hidden_states)
         feed_forward_hidden_states = self.mlp(hidden_states)
         # residual connection
-        hidden_states = residual + self.drop_path(feed_forward_hidden_states)
+        hidden_states = residual + feed_forward_hidden_states
 
         if use_cache:
             outputs = (hidden_states,) + outputs
@@ -515,10 +479,6 @@ class GPT2PreTrainedModel(PreTrainedModel):
             if name == "c_proj.weight":
                 # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
                 p.data.normal_(mean=0.0, std=(self.config.initializer_range / math.sqrt(2 * self.config.n_layer)))
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, GPT2Model):
-            module.gradient_checkpointing = value
 
 
 @dataclass
@@ -697,14 +657,11 @@ DEPARALLELIZE_DOCSTRING = r"""
     ```
 """
 
-
 @add_start_docstrings(
     "The bare GPT2 Model transformer outputting raw hidden-states without any specific head on top.",
     GPT2_START_DOCSTRING,
 )
 class GPT2Model(GPT2PreTrainedModel):
-    _keys_to_ignore_on_load_missing = ["attn.masked_bias"]
-
     def __init__(self, config):
         super().__init__(config)
 
@@ -714,8 +671,7 @@ class GPT2Model(GPT2PreTrainedModel):
         self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)
 
         self.drop = nn.Dropout(config.embd_pdrop)
-        dpr = [x.item() for x in torch.linspace(0, config.drop_path_rate, config.num_hidden_layers)]
-        self.h = nn.ModuleList([GPT2Block(config, layer_idx=i, drop_path_rate=dpr[i]) for i in range(config.num_hidden_layers)])
+        self.h = nn.ModuleList([GPT2Block(config, layer_idx=i) for i in range(config.num_hidden_layers)])
         self.ln_f = nn.LayerNorm(self.embed_dim, eps=config.layer_norm_epsilon)
 
         # Model parallel
@@ -816,6 +772,7 @@ class GPT2Model(GPT2PreTrainedModel):
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
+            self.warn_if_padding_and_no_attention_mask(input_ids, attention_mask)
             input_shape = input_ids.size()
             input_ids = input_ids.view(-1, input_shape[-1])
             batch_size = input_ids.shape[0]
@@ -829,8 +786,6 @@ class GPT2Model(GPT2PreTrainedModel):
 
         if token_type_ids is not None:
             token_type_ids = token_type_ids.view(-1, input_shape[-1])
-        if position_ids is not None:
-            position_ids = position_ids.view(-1, input_shape[-1])
 
         if past_key_values is None:
             past_length = 0
@@ -839,7 +794,7 @@ class GPT2Model(GPT2PreTrainedModel):
             past_length = past_key_values[0][0].size(-2)
         if position_ids is None:
             position_ids = torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=device)
-            position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
+            position_ids = position_ids.unsqueeze(0)
 
         # GPT2Attention mask.
         if attention_mask is not None:
@@ -894,9 +849,9 @@ class GPT2Model(GPT2PreTrainedModel):
 
         hidden_states = self.drop(hidden_states)
 
-        output_shape = input_shape + (hidden_states.size(-1),)
+        output_shape = (-1,) + input_shape[1:] + (hidden_states.size(-1),)
 
-        if self.gradient_checkpointing and self.training:
+        if self.force_gradient_checkpointing or (self.gradient_checkpointing and self.training):
             if use_cache:
                 logger.warning_once(
                     "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
@@ -923,27 +878,16 @@ class GPT2Model(GPT2PreTrainedModel):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.force_gradient_checkpointing or (self.gradient_checkpointing and self.training):
-                if use_cache:
-                    logger.warning(
-                        "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
-                    )
-                    use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        # None for past_key_value
-                        return module(*inputs, use_cache, output_attentions)
-
-                    return custom_forward
-
-                outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
+                outputs = self._gradient_checkpointing_func(
+                    block.__call__,
                     hidden_states,
                     None,
                     attention_mask,
                     head_mask[i],
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    use_cache,
+                    output_attentions,
                 )
             else:
                 outputs = block(
@@ -1003,8 +947,7 @@ class GPT2Model(GPT2PreTrainedModel):
     GPT2_START_DOCSTRING,
 )
 class GPT2LMHeadModel(GPT2PreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"lm_head.weight"]
-    _keys_to_ignore_on_load_unexpected = [r"h\.\d+\.attn\.masked_bias", r"h\.\d+\.attn\.bias"]
+    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -1057,11 +1000,20 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
 
     def prepare_inputs_for_generation(self, input_ids, past_key_values=None, inputs_embeds=None, **kwargs):
         token_type_ids = kwargs.get("token_type_ids", None)
-        # only last token for inputs_ids if past is defined in kwargs
+        # Omit tokens covered by past_key_values
         if past_key_values:
-            input_ids = input_ids[:, -1].unsqueeze(-1)
+            past_length = past_key_values[0][0].shape[2]
+
+            # Some generation methods already pass only the last input ID
+            if input_ids.shape[1] > past_length:
+                remove_prefix_length = past_length
+            else:
+                # Default to old behavior: keep only final ID
+                remove_prefix_length = input_ids.shape[1] - 1
+
+            input_ids = input_ids[:, remove_prefix_length:]
             if token_type_ids is not None:
-                token_type_ids = token_type_ids[:, -1].unsqueeze(-1)
+                token_type_ids = token_type_ids[:, -input_ids.shape[1] :]
 
         attention_mask = kwargs.get("attention_mask", None)
         position_ids = kwargs.get("position_ids", None)
@@ -1071,7 +1023,7 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
-                position_ids = position_ids[:, -1].unsqueeze(-1)
+                position_ids = position_ids[:, -input_ids.shape[1] :]
         else:
             position_ids = None
 
@@ -1090,6 +1042,7 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
                 "token_type_ids": token_type_ids,
             }
         )
+
         return model_inputs
 
     @add_start_docstrings_to_model_forward(GPT2_INPUTS_DOCSTRING)
@@ -1151,9 +1104,6 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
 
         lm_logits = self.lm_head(hidden_states)
 
-        # HACK: gpt2 mp
-        lm_logits[:, :, 50257:] = float("-inf")
-
         loss = None
         if labels is not None:
             # move labels to correct device to enable model parallelism
@@ -1203,7 +1153,7 @@ input sequence).
     GPT2_START_DOCSTRING,
 )
 class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"attn.masked_bias", r"attn.bias", r"lm_head.weight"]
+    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -1260,11 +1210,20 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
 
     def prepare_inputs_for_generation(self, input_ids, past_key_values=None, **kwargs):
         token_type_ids = kwargs.get("token_type_ids", None)
-        # only last token for inputs_ids if past is defined in kwargs
+        # Omit tokens covered by past_key_values
         if past_key_values:
-            input_ids = input_ids[:, -1].unsqueeze(-1)
+            past_length = past_key_values[0][0].shape[2]
+
+            # Some generation methods already pass only the last input ID
+            if input_ids.shape[1] > past_length:
+                remove_prefix_length = past_length
+            else:
+                # Default to old behavior: keep only final ID
+                remove_prefix_length = input_ids.shape[1] - 1
+
+            input_ids = input_ids[:, remove_prefix_length:]
             if token_type_ids is not None:
-                token_type_ids = token_type_ids[:, -1].unsqueeze(-1)
+                token_type_ids = token_type_ids[:, -input_ids.shape[1] :]
 
         attention_mask = kwargs.get("attention_mask", None)
         position_ids = kwargs.get("position_ids", None)
@@ -1274,7 +1233,7 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
-                position_ids = position_ids[:, -1].unsqueeze(-1)
+                position_ids = position_ids[:, -input_ids.shape[1] :]
         else:
             position_ids = None
 
@@ -1431,8 +1390,6 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
     GPT2_START_DOCSTRING,
 )
 class GPT2ForSequenceClassification(GPT2PreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"h\.\d+\.attn\.masked_bias", r"lm_head.weight"]
-
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
@@ -1503,7 +1460,9 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
             sequence_lengths = -1
         else:
             if input_ids is not None:
-                sequence_lengths = (torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1).to(logits.device)
+                sequence_lengths = (torch.eq(input_ids, self.config.pad_token_id).int().argmax(-1) - 1).to(
+                    logits.device
+                )
             else:
                 sequence_lengths = -1
                 logger.warning(
@@ -1654,8 +1613,6 @@ class GPT2ForTokenClassification(GPT2PreTrainedModel):
     GPT2_START_DOCSTRING,
 )
 class GPT2ForQuestionAnswering(GPT2PreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"h\.\d+\.attn\.masked_bias", r"h\.\d+\.attn\.bias", r"lm_head.weight"]
-
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
@@ -1665,7 +1622,6 @@ class GPT2ForQuestionAnswering(GPT2PreTrainedModel):
         # Model parallel
         self.model_parallel = False
         self.device_map = None
-        self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
         self.post_init()

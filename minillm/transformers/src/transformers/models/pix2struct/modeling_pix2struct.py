@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 import torch.utils.checkpoint
 from torch import nn
-from torch.utils.checkpoint import checkpoint
 
 from ...activations import ACT2FN
 from ...modeling_outputs import (
@@ -343,18 +342,12 @@ class Pix2StructVisionEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, attention_mask, layer_head_mask, output_attentions)
@@ -481,7 +474,7 @@ class Pix2StructPreTrainedModel(PreTrainedModel):
 
         if decoder_start_token_id is None:
             raise ValueError(
-                "self.model.config.decoder_start_token_id has to be defined. In Pix2Struct it is usually set to the pad_token_id."
+                "self.model.config.decoder_start_token_id has to be defined. In Pix2Struct it is usually set to the pad_token_id. "
                 "See Pix2Struct docs for more information."
             )
 
@@ -562,10 +555,6 @@ class Pix2StructVisionModel(Pix2StructPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-
-    def _set_gradient_checkpointing(self, module: Pix2StructVisionEncoder, value: bool = False) -> None:
-        if isinstance(module, Pix2StructVisionEncoder):
-            module.gradient_checkpointing = value
 
     def get_input_embeddings(self):
         return self.embeddings.patch_projection
@@ -1317,11 +1306,8 @@ PIX2STRUCT_INPUTS_DOCSTRING = r"""
 class Pix2StructTextModel(Pix2StructPreTrainedModel):
     config_class = Pix2StructTextConfig
     _no_split_modules = ["Pix2StructTextBlock"]
+    _tied_weights_keys = ["lm_head.weight"]
     supports_gradient_checkpointing = True
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, (Pix2StructTextAttention, Pix2StructTextModel)):
-            module.gradient_checkpointing = value
 
     def __init__(self, config):
         super().__init__(config)
@@ -1386,21 +1372,21 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
     @replace_return_docstrings(output_type=CausalLMOutputWithCrossAttentions, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
-        input_ids=None,
-        attention_mask=None,
-        encoder_hidden_states=None,
-        encoder_attention_mask=None,
-        inputs_embeds=None,
-        head_mask=None,
-        cross_attn_head_mask=None,
-        past_key_values=None,
-        use_cache=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        labels=None,
-        return_dict=None,
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        encoder_hidden_states: Optional[torch.FloatTensor] = None,
+        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        inputs_embeds: Optional[torch.LongTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        cross_attn_head_mask: Optional[torch.Tensor] = None,
+        past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        labels: Optional[torch.LongTensor] = None,
+        return_dict: Optional[bool] = None,
         **kwargs,
-    ):
+    ) -> Union[Tuple[torch.FloatTensor, ...], CausalLMOutputWithCrossAttentions]:
         r"""
         Returns:
 
@@ -1494,15 +1480,8 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
                         "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
                     )
                     use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return tuple(module(*inputs, use_cache, output_attentions))
-
-                    return custom_forward
-
-                layer_outputs = checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.forward,
                     hidden_states,
                     extended_attention_mask,
                     position_bias,
@@ -1512,6 +1491,8 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
                     layer_head_mask,
                     cross_attn_layer_head_mask,
                     None,  # past_key_value is always None with gradient checkpointing
+                    use_cache,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -1546,8 +1527,9 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
                 present_key_value_states = present_key_value_states + (present_key_value_state,)
 
             if output_attentions:
-                all_attentions = all_attentions + (layer_outputs[2],)
-                all_cross_attentions = all_cross_attentions + (layer_outputs[3],)
+                all_attentions = all_attentions + (layer_outputs[3],)
+                if encoder_hidden_states is not None:
+                    all_cross_attentions = all_cross_attentions + (layer_outputs[5],)
 
         hidden_states = self.final_layer_norm(hidden_states)
         hidden_states = self.dropout(hidden_states)
@@ -1596,14 +1578,7 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
 class Pix2StructForConditionalGeneration(Pix2StructPreTrainedModel):
     config_class = Pix2StructConfig
     main_input_name = "flattened_patches"
-
-    _keys_to_ignore_on_load_missing = [
-        r"encoder.embed_tokens.weight",
-        r"decoder.embed_tokens.weight",
-    ]
-    _keys_to_ignore_on_load_unexpected = [
-        r"decoder.layer.0.layer.1.EncDecAttention.relative_attention_bias.weight",
-    ]
+    _tied_weights_keys = ["decoder.lm_head.weight"]
 
     def __init__(self, config: Pix2StructConfig):
         super().__init__(config)
@@ -1803,9 +1778,18 @@ class Pix2StructForConditionalGeneration(Pix2StructPreTrainedModel):
         if decoder_attention_mask is None:
             decoder_attention_mask = torch.ones_like(input_ids).to(input_ids.device)
 
-        # cut decoder_input_ids if past is used
+        # cut decoder_input_ids if past_key_values is used
         if past_key_values is not None:
-            input_ids = input_ids[:, -1:]
+            past_length = past_key_values[0][0].shape[2]
+
+            # Some generation methods already pass only the last input ID
+            if input_ids.shape[1] > past_length:
+                remove_prefix_length = past_length
+            else:
+                # Default to old behavior: keep only final ID
+                remove_prefix_length = input_ids.shape[1] - 1
+
+            input_ids = input_ids[:, remove_prefix_length:]
 
         return {
             "flattened_patches": flattened_patches,

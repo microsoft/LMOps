@@ -13,21 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ PyTorch OPT model."""
-import random
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.utils.checkpoint
 from torch import nn
+import torch.distributed as dist
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 import torch.nn.functional as F
 
 from ...activations import ACT2FN
+from ...modeling_attn_mask_utils import _prepare_4d_causal_attention_mask
 from ...modeling_outputs import (
     BaseModelOutputWithPast,
     CausalLMOutputWithPast,
+    QuestionAnsweringModelOutput,
+    SequenceClassifierOutputWithPast,
 )
 from ...modeling_utils import PreTrainedModel
 from ...utils import (
+    add_code_sample_docstrings,
+    add_start_docstrings,
+    add_start_docstrings_to_model_forward,
     logging,
     replace_return_docstrings,
 )
@@ -36,6 +43,16 @@ from .configuration_opt import OPTConfig
 
 logger = logging.get_logger(__name__)
 
+_CHECKPOINT_FOR_DOC = "facebook/opt-350m"
+_CONFIG_FOR_DOC = "OPTConfig"
+
+# Base model docstring
+_EXPECTED_OUTPUT_SHAPE = [1, 8, 1024]
+
+# SequenceClassification docstring
+_CHECKPOINT_FOR_SEQUENCE_CLASSIFICATION = "ArthurZ/opt-350m-dummy-sc"
+_SEQ_CLASS_EXPECTED_LOSS = 1.71
+_SEQ_CLASS_EXPECTED_OUTPUT = "'LABEL_0'"
 
 OPT_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "facebook/opt-125m",
@@ -109,40 +126,6 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] 
     return inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
 
 
-def drop_path(input: torch.Tensor, drop_prob: float = 0.0, training: bool = False) -> torch.Tensor:
-    """
-    Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
-
-    Comment by Ross Wightman: This is the same as the DropConnect impl I created for EfficientNet, etc networks,
-    however, the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
-    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for changing the
-    layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use 'survival rate' as the
-    argument.
-    """
-    if drop_prob == 0.0 or not training:
-        return input
-    keep_prob = 1 - drop_prob
-    shape = (input.shape[0],) + (1,) * (input.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
-    random_tensor = keep_prob + torch.rand(shape, dtype=input.dtype, device=input.device)
-    random_tensor.floor_()  # binarize
-    output = input.div(keep_prob) * random_tensor
-    return output
-
-
-class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks)."""
-
-    def __init__(self, drop_prob: Optional[float] = None) -> None:
-        super().__init__()
-        self.drop_prob = drop_prob
-
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        return drop_path(hidden_states, self.drop_prob, self.training)
-
-    def extra_repr(self) -> str:
-        return "p={}".format(self.drop_prob)
-
-
 class OPTLearnedPositionalEmbedding(nn.Embedding):
     """
     This module learns positional embeddings up to a fixed maximum size.
@@ -165,28 +148,6 @@ class OPTLearnedPositionalEmbedding(nn.Embedding):
         positions = positions[:, past_key_values_length:]
 
         return super().forward(positions + self.offset)
-
-
-# class ParallelOPTLearnedPositionalEmbedding(nn.Module):
-#     def __init__(self, num_embeddings: int, embedding_dim: int):
-#         # OPT is set up so that if padding_idx is specified then offset the embedding ids by 2
-#         # and adjust num_embeddings appropriately. Other models don't have this hack
-#         super().__init__()
-#         self.offset = 2
-#         assert (num_embeddings + self.offset) % get_model_parallel_world_size() == 0, (num_embeddings + self.offset, get_model_parallel_world_size())
-#         self.pos_embed = VocabParallelEmbedding(num_embeddings + self.offset, embedding_dim)
-
-#     def forward(self, attention_mask: torch.LongTensor, past_key_values_length: int = 0):
-#         """`input_ids_shape` is expected to be [bsz x seqlen]."""
-#         attention_mask = attention_mask.long()
-
-#         # create positions depending on attention_mask
-#         positions = (torch.cumsum(attention_mask, dim=1).type_as(attention_mask) * attention_mask).long() - 1
-
-#         # cut positions if `past_key_values_length` is > 0
-#         positions = positions[:, past_key_values_length:]
-
-#         return self.pos_embed(positions + self.offset)
 
 
 class ParallelOPTAttention(nn.Module):
@@ -261,11 +222,8 @@ class ParallelOPTAttention(nn.Module):
 
         bsz, tgt_len, _ = hidden_states.size()
 
-        # hidden_states: [b, s, embed_dim]
-
         # get query proj
         query_states = self.q_proj(hidden_states) * self.scaling
-        # query_states: [b, s, embed_dim_p]
         # get key, value proj
         if is_cross_attention and past_key_value is not None:
             # reuse k,v, cross_attentions
@@ -279,15 +237,12 @@ class ParallelOPTAttention(nn.Module):
             # reuse k, v, self_attention
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
-            # # past_key_value[0/1]: [b, n_p, s-1, h_i]
             key_states = torch.cat([past_key_value[0], key_states], dim=2)
             value_states = torch.cat([past_key_value[1], value_states], dim=2)
         else:
             # self_attention
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
-            # self.k_proj(hidden_states): [b, s, embed_dim_p]
-            # key_values: [b, num_heads_p, s, head_dim]
 
         if self.is_decoder:
             # if cross_attention save Tuple(torch.Tensor, torch.Tensor) of all cross attention key/value_states.
@@ -301,8 +256,6 @@ class ParallelOPTAttention(nn.Module):
 
         proj_shape = (bsz * self.num_heads_per_partition, -1, self.head_dim)
         query_states = self._shape(query_states, tgt_len, bsz).view(*proj_shape)
-        # self._shape(query_states, tgt_len, bsz): [b, num_heads_p, s, head_dim]
-        # query_states: [b*num_heads_p, s, head_dim]
         key_states = key_states.view(*proj_shape)
         value_states = value_states.view(*proj_shape)
 
@@ -352,11 +305,9 @@ class ParallelOPTAttention(nn.Module):
             attn_weights_reshaped = None
 
         with get_cuda_rng_tracker().fork():
-            # TODO: what is the use of this?
             attn_probs = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
 
         attn_output = torch.bmm(attn_probs, value_states)
-        # attn_output: [b*num_heads_p, s, head_dim]
 
         if attn_output.size() != (bsz * self.num_heads_per_partition, tgt_len, self.head_dim):
             raise ValueError(
@@ -370,14 +321,12 @@ class ParallelOPTAttention(nn.Module):
         # Use the `embed_dim` from the config (stored in the class) rather than `hidden_state` because `attn_output` can be
         # partitioned aross GPUs when using tensor-parallelism.
         attn_output = attn_output.reshape(bsz, tgt_len, self.embed_dim_per_partition)
-        # attn_output: [b, s, embed_dim_p]
         attn_output = self.out_proj(attn_output)
-        # attn_output: [b, s, embed_dim]
         return attn_output, attn_weights_reshaped, past_key_value
 
 
 class ParallelOPTDecoderLayer(nn.Module):
-    def __init__(self, config: OPTConfig, drop_path_rate=0.0):
+    def __init__(self, config: OPTConfig):
         super().__init__()
         self.embed_dim = config.hidden_size
         self.self_attn = ParallelOPTAttention(
@@ -389,7 +338,6 @@ class ParallelOPTDecoderLayer(nn.Module):
         )
         self.do_layer_norm_before = config.do_layer_norm_before
         self.dropout = config.dropout
-        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
         self.activation_fn = ACT2FN[config.activation_function]
 
         self.self_attn_layer_norm = nn.LayerNorm(
@@ -451,7 +399,7 @@ class ParallelOPTDecoderLayer(nn.Module):
             output_attentions=output_attentions,
         )
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + self.drop_path(hidden_states)
+        hidden_states = residual + hidden_states
 
         # 350m applies layer norm AFTER attention
         if not self.do_layer_norm_before:
@@ -466,16 +414,13 @@ class ParallelOPTDecoderLayer(nn.Module):
         if self.do_layer_norm_before:
             hidden_states = self.final_layer_norm(hidden_states)
 
-        # hidden_states: [b, s, embed_dim]
         hidden_states = self.fc1(hidden_states)
-        # hidden_states: [b, s, ffn_dim_p]
         hidden_states = self.activation_fn(hidden_states)
 
         hidden_states = self.fc2(hidden_states)
-        # hidden_states: [b, s, embed_dim]
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
 
-        hidden_states = (residual + self.drop_path(hidden_states)).view(hidden_states_shape)
+        hidden_states = (residual + hidden_states).view(hidden_states_shape)
 
         # 350m applies layer norm AFTER attention
         if not self.do_layer_norm_before:
@@ -492,6 +437,27 @@ class ParallelOPTDecoderLayer(nn.Module):
         return outputs
 
 
+OPT_START_DOCSTRING = r"""
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`OPTConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+"""
+
+
+@add_start_docstrings(
+    "The bare OPT Model outputting raw hidden-states without any specific head on top.",
+    OPT_START_DOCSTRING,
+)
 class ParallelOPTPreTrainedModel(PreTrainedModel):
     config_class = OPTConfig
     base_model_prefix = "model"
@@ -515,6 +481,68 @@ class ParallelOPTPreTrainedModel(PreTrainedModel):
             module.gradient_checkpointing = value
 
 
+OPT_INPUTS_DOCSTRING = r"""
+    Args:
+        input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you provide
+            it.
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            [What are input IDs?](../glossary#input-ids)
+        attention_mask (`torch.Tensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Mask to avoid performing attention on padding token indices. Mask values selected in `[0, 1]`:
+
+            - 1 for tokens that are **not masked**,
+            - 0 for tokens that are **masked**.
+
+            [What are attention masks?](../glossary#attention-mask)
+
+            Indices can be obtained using [`AutoTokenizer`]. See [`PreTrainedTokenizer.encode`] and
+            [`PreTrainedTokenizer.__call__`] for details.
+
+            If `past_key_values` is used, optionally only the last `decoder_input_ids` have to be input (see
+            `past_key_values`).
+
+            If you want to change padding behavior, you should read [`modeling_opt._prepare_decoder_attention_mask`]
+            and modify to your needs. See diagram 1 in [the paper](https://arxiv.org/abs/1910.13461) for more
+            information on the default strategy.
+        head_mask (`torch.Tensor` of shape `(encoder_layers, encoder_attention_heads)`, *optional*):
+            Mask to nullify selected heads of the attention modules in the encoder. Mask values selected in `[0, 1]`:
+
+            - 1 indicates the head is **not masked**,
+            - 0 indicates the head is **masked**.
+
+        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
+            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape
+            `(batch_size, num_heads, sequence_length, embed_size_per_head)`) and 2 additional tensors of shape
+            `(batch_size, num_heads, encoder_sequence_length, embed_size_per_head)`.
+
+            Contains pre-computed hidden-states (key and values in the self-attention blocks and in the cross-attention
+            blocks) that can be used (see `past_key_values` input) to speed up sequential decoding.
+
+            If `past_key_values` are used, the user can optionally input only the last `decoder_input_ids` (those that
+            don't have their past key value states given to this model) of shape `(batch_size, 1)` instead of all
+            `decoder_input_ids` of shape `(batch_size, sequence_length)`.
+        inputs_embeds (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`, *optional*):
+            Optionally, instead of passing `input_ids` you can choose to directly pass an embedded representation. This
+            is useful if you want more control over how to convert `input_ids` indices into associated vectors than the
+            model's internal embedding lookup matrix.
+        use_cache (`bool`, *optional*):
+            If set to `True`, `past_key_values` key value states are returned and can be used to speed up decoding (see
+            `past_key_values`).
+        output_attentions (`bool`, *optional*):
+            Whether or not to return the attentions tensors of all attention layers. See `attentions` under returned
+            tensors for more detail.
+        output_hidden_states (`bool`, *optional*):
+            Whether or not to return the hidden states of all layers. See `hidden_states` under returned tensors for
+            more detail.
+        return_dict (`bool`, *optional*):
+            Whether or not to return a [`~utils.ModelOutput`] instead of a plain tuple.
+"""
+
+
 class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
     """
     Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`OPTDecoderLayer`]
@@ -531,7 +559,6 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
         self.max_target_positions = config.max_position_embeddings
         self.vocab_size = config.vocab_size
 
-        # self.embed_tokens = nn.Embedding(config.vocab_size, config.word_embed_proj_dim, self.padding_idx)
         self.embed_tokens = VocabParallelEmbedding(config.vocab_size, config.word_embed_proj_dim, padding_idx=self.padding_idx)
         self.embed_positions = OPTLearnedPositionalEmbedding(config.max_position_embeddings, config.hidden_size)
 
@@ -555,9 +582,7 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
         else:
             self.final_layer_norm = None
 
-        dpr = [x.item() for x in torch.linspace(0, config.drop_path_rate, config.num_hidden_layers)]
-        self.layers = nn.ModuleList([ParallelOPTDecoderLayer(config, drop_path_rate=dpr[i]) for i in range(config.num_hidden_layers)])
-
+        self.layers = nn.ModuleList([ParallelOPTDecoderLayer(config) for i in range(config.num_hidden_layers)])
         self.gradient_checkpointing = False
         self.force_gradient_checkpointing = False
         # Initialize weights and apply final processing
@@ -687,16 +712,22 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
                 f"The provided attention mask has length {attention_mask.shape[1]}, but its length should be "
                 f"{mask_seq_length} (sum of the lengths of current and past inputs)"
             )
-        causal_attention_mask = self._prepare_decoder_attention_mask(
+        causal_attention_mask = _prepare_4d_causal_attention_mask(
             attention_mask, input_shape, inputs_embeds, past_key_values_length
         )
         pos_embeds = self.embed_positions(attention_mask, past_key_values_length)
-
 
         if self.project_in is not None:
             inputs_embeds = self.project_in(inputs_embeds)
 
         hidden_states = inputs_embeds + pos_embeds
+
+        if self.force_gradient_checkpointing or (self.gradient_checkpointing and self.training):
+            if use_cache:
+                logger.warning_once(
+                    "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
+                )
+                use_cache = False
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -717,32 +748,22 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
-            dropout_probability = random.uniform(0, 1)
-            if self.training and (dropout_probability < self.layerdrop):
-                continue
+            if self.training:
+                dropout_probability = torch.rand([])
+                if dropout_probability < self.layerdrop:
+                    continue
 
             past_key_value = past_key_values[idx] if past_key_values is not None else None
+
             if self.force_gradient_checkpointing or (self.gradient_checkpointing and self.training):
-                if use_cache:
-                    logger.warning(
-                        "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
-                    )
-                    raise NotImplementedError
-                    use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        # None for past_key_value
-                        return module(*inputs, output_attentions, None)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(decoder_layer),
+                layer_outputs = self._gradient_checkpointing_func(
+                    decoder_layer.__call__,
                     hidden_states,
                     causal_attention_mask,
                     head_mask[idx] if head_mask is not None else None,
                     None,
+                    output_attentions,
+                    use_cache,
                 )
             else:
                 layer_outputs = decoder_layer(
@@ -783,6 +804,10 @@ class ParallelOPTDecoder(ParallelOPTPreTrainedModel):
         )
 
 
+@add_start_docstrings(
+    "The bare OPT Model outputting raw hidden-states without any specific head on top.",
+    OPT_START_DOCSTRING,
+)
 class ParallelOPTModel(ParallelOPTPreTrainedModel):
     def __init__(self, config: OPTConfig):
         super().__init__(config)
@@ -799,6 +824,13 @@ class ParallelOPTModel(ParallelOPTPreTrainedModel):
     def get_decoder(self):
         return self.decoder
 
+    @add_start_docstrings_to_model_forward(OPT_INPUTS_DOCSTRING)
+    @add_code_sample_docstrings(
+        checkpoint=_CHECKPOINT_FOR_DOC,
+        output_type=BaseModelOutputWithPast,
+        config_class=_CONFIG_FOR_DOC,
+        expected_output=_EXPECTED_OUTPUT_SHAPE,
+    )
     def forward(
         self,
         input_ids: torch.LongTensor = None,
@@ -843,17 +875,14 @@ class ParallelOPTModel(ParallelOPTPreTrainedModel):
 
 
 class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"lm_head.weight"]
+    _tied_weights_keys = ["lm_head.weight"]
 
     def __init__(self, config):
         super().__init__(config)
         self.model = ParallelOPTModel(config)
 
         # the lm_head weight is automatically tied to the embed tokens weight
-        # self.lm_head = nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
-        # assert 1 == 0, "maybe bug"
         self.lm_head = VocabParallelEmbedding(config.vocab_size, config.word_embed_proj_dim)
-        # TODO: check tied
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -879,6 +908,7 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
     def set_force_gradient_checkpointing(self, value):
         self.model.decoder.force_gradient_checkpointing = value
 
+    @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
         input_ids: torch.LongTensor = None,
@@ -957,13 +987,13 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
         >>> model = OPTForCausalLM.from_pretrained("facebook/opt-350m")
         >>> tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
 
-        >>> prompt = "Hey, are you consciours? Can you talk to me?"
+        >>> prompt = "Hey, are you conscious? Can you talk to me?"
         >>> inputs = tokenizer(prompt, return_tensors="pt")
 
         >>> # Generate
         >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        "Hey, are you consciours? Can you talk to me?\nI'm not consciours, but I can talk to you."
+        "Hey, are you conscious? Can you talk to me?\nI'm not conscious. I'm just a little bit of a weirdo."
         ```"""
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -988,19 +1018,17 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
         logits_parallel = F.linear(hidden_state_parallel, self.lm_head.weight)
 
         logits = logits_parallel
-        
-        # logits = self.lm_head(outputs[0]).contiguous()
 
         loss = None
-        # if labels is not None:
-        #     move labels to correct device to enable model parallelism
-        #     labels = labels.to(logits.device)
-        #     # Shift so that tokens < n predict n
-        #     shift_logits = logits[..., :-1, :].contiguous()
-        #     shift_labels = labels[..., 1:].contiguous()
-        #     # Flatten the tokens
-        #     loss_fct = CrossEntropyLoss()
-        #     loss = loss_fct(shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1))
+        if labels is not None:
+            # move labels to correct device to enable model parallelism
+            labels = labels.to(logits.device)
+            # Shift so that tokens < n predict n
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            # Flatten the tokens
+            loss_fct = CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, self.config.vocab_size), shift_labels.view(-1))
 
         if not return_dict:
             output = (logits,) + outputs[1:]
@@ -1017,8 +1045,17 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
     def prepare_inputs_for_generation(
         self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
     ):
-        if past_key_values:
-            input_ids = input_ids[:, -1:]
+        if past_key_values is not None:
+            past_length = past_key_values[0][0].shape[2]
+
+            # Some generation methods already pass only the last input ID
+            if input_ids.shape[1] > past_length:
+                remove_prefix_length = past_length
+            else:
+                # Default to old behavior: keep only final ID
+                remove_prefix_length = input_ids.shape[1] - 1
+
+            input_ids = input_ids[:, remove_prefix_length:]
 
         # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
         if inputs_embeds is not None and past_key_values is None:
@@ -1039,5 +1076,270 @@ class ParallelOPTForCausalLM(ParallelOPTPreTrainedModel):
     def _reorder_cache(past_key_values, beam_idx):
         reordered_past = ()
         for layer_past in past_key_values:
-            reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+            reordered_past += (
+                tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
+            )
         return reordered_past
+
+
+
+
+@add_start_docstrings(
+    """
+    The OPT Model transformer with a sequence classification head on top (linear layer).
+
+    [`OPTForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    (e.g. GPT-2) do.
+
+    Since it does classification on the last token, it requires to know the position of the last token. If a
+    `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in each row. If
+    no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot guess the
+    padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
+    each row of the batch).
+    """,
+    OPT_START_DOCSTRING,
+)
+class OPTForSequenceClassification(ParallelOPTPreTrainedModel):
+    def __init__(self, config: OPTConfig):
+        super().__init__(config)
+        self.num_labels = config.num_labels
+        self.model = ParallelOPTModel(config)
+        self.score = nn.Linear(config.word_embed_proj_dim, self.num_labels, bias=False)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    @add_start_docstrings_to_model_forward(OPT_INPUTS_DOCSTRING)
+    @add_code_sample_docstrings(
+        checkpoint=_CHECKPOINT_FOR_SEQUENCE_CLASSIFICATION,
+        output_type=SequenceClassifierOutputWithPast,
+        config_class=_CONFIG_FOR_DOC,
+        expected_output=_SEQ_CLASS_EXPECTED_OUTPUT,
+        expected_loss=_SEQ_CLASS_EXPECTED_LOSS,
+    )
+    def forward(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple, SequenceClassifierOutputWithPast]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
+            Labels for computing the sequence classification/regression loss. Indices should be in `[0, ...,
+            config.num_labels - 1]`. If `config.num_labels == 1` a regression loss is computed (Mean-Square loss), If
+            `config.num_labels > 1` a classification loss is computed (Cross-Entropy).
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        transformer_outputs = self.model(
+            input_ids,
+            past_key_values=past_key_values,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        hidden_states = transformer_outputs[0]
+        logits = self.score(hidden_states)
+
+        if input_ids is not None:
+            batch_size, sequence_length = input_ids.shape[:2]
+        else:
+            batch_size, sequence_length = inputs_embeds.shape[:2]
+
+        if self.config.pad_token_id is None:
+            sequence_lengths = -1
+        else:
+            if input_ids is not None:
+                sequence_lengths = (torch.eq(input_ids, self.config.pad_token_id).int().argmax(-1) - 1).to(
+                    logits.device
+                )
+            else:
+                sequence_lengths = -1
+                logger.warning(
+                    f"{self.__class__.__name__} will not detect padding tokens in `inputs_embeds`. Results may be "
+                    "unexpected if using padding tokens in conjunction with `inputs_embeds.`"
+                )
+
+        pooled_logits = logits[torch.arange(batch_size, device=logits.device), sequence_lengths]
+
+        loss = None
+        if labels is not None:
+            if self.config.problem_type is None:
+                if self.num_labels == 1:
+                    self.config.problem_type = "regression"
+                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
+
+            if self.config.problem_type == "regression":
+                loss_fct = MSELoss()
+                if self.num_labels == 1:
+                    loss = loss_fct(pooled_logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(pooled_logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(pooled_logits.view(-1, self.num_labels), labels.view(-1))
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(pooled_logits, labels)
+        if not return_dict:
+            output = (pooled_logits,) + transformer_outputs[1:]
+            return ((loss,) + output) if loss is not None else output
+
+        return SequenceClassifierOutputWithPast(
+            loss=loss,
+            logits=pooled_logits,
+            past_key_values=transformer_outputs.past_key_values,
+            hidden_states=transformer_outputs.hidden_states,
+            attentions=transformer_outputs.attentions,
+        )
+
+    def get_input_embeddings(self):
+        return self.model.decoder.embed_tokens
+
+    def set_input_embeddings(self, value):
+        self.model.decoder.embed_tokens = value
+
+
+@add_start_docstrings(
+    """
+    The OPT Model transformer with a span classification head on top for extractive question-answering tasks like SQuAD
+    (a linear layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    """,
+    OPT_START_DOCSTRING,
+)
+class OPTForQuestionAnswering(ParallelOPTPreTrainedModel):
+    def __init__(self, config: OPTConfig):
+        super().__init__(config)
+        self.model = ParallelOPTModel(config)
+        self.qa_outputs = nn.Linear(config.word_embed_proj_dim, 2)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    @add_start_docstrings_to_model_forward(OPT_INPUTS_DOCSTRING)
+    @replace_return_docstrings(output_type=QuestionAnsweringModelOutput, config_class=_CONFIG_FOR_DOC)
+    def forward(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        start_positions: Optional[torch.LongTensor] = None,
+        end_positions: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple, QuestionAnsweringModelOutput]:
+        r"""
+        start_positions (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
+            Labels for position (index) of the start of the labelled span for computing the token classification loss.
+            Positions are clamped to the length of the sequence (`sequence_length`). Position outside of the sequence
+            are not taken into account for computing the loss.
+        end_positions (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
+            Labels for position (index) of the end of the labelled span for computing the token classification loss.
+            Positions are clamped to the length of the sequence (`sequence_length`). Position outside of the sequence
+            are not taken into account for computing the loss.
+
+        Returns:
+
+        Example:
+
+        ```python
+        >>> from transformers import AutoTokenizer, OPTForQuestionAnswering
+        >>> import torch
+
+        >>> torch.manual_seed(4)  # doctest: +IGNORE_RESULT
+        >>> tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
+
+        >>> # note: we are loading a OPTForQuestionAnswering from the hub here,
+        >>> # so the head will be randomly initialized, hence the predictions will be random
+        >>> model = OPTForQuestionAnswering.from_pretrained("facebook/opt-350m")
+
+        >>> question, text = "Who was Jim Henson?", "Jim Henson was a nice puppet"
+
+        >>> inputs = tokenizer(question, text, return_tensors="pt")
+        >>> with torch.no_grad():
+        ...     outputs = model(**inputs)
+
+        >>> answer_start_index = outputs.start_logits.argmax()
+        >>> answer_end_index = outputs.end_logits.argmax()
+
+        >>> answer_offset = len(tokenizer(question)[0])
+
+        >>> predict_answer_tokens = inputs.input_ids[
+        ...     0, answer_offset + answer_start_index : answer_offset + answer_end_index + 1
+        ... ]
+        >>> predicted = tokenizer.decode(predict_answer_tokens)
+        >>> predicted
+        ' a nice puppet'
+        ```"""
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        transformer_outputs = self.model(
+            input_ids,
+            past_key_values=past_key_values,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        hidden_states = transformer_outputs[0]
+
+        logits = self.qa_outputs(hidden_states)
+        start_logits, end_logits = logits.split(1, dim=-1)
+        start_logits = start_logits.squeeze(-1).contiguous()
+        end_logits = end_logits.squeeze(-1).contiguous()
+
+        total_loss = None
+        if start_positions is not None and end_positions is not None:
+            # If we are on multi-GPU, split add a dimension
+            if len(start_positions.size()) > 1:
+                start_positions = start_positions.squeeze(-1)
+            if len(end_positions.size()) > 1:
+                end_positions = end_positions.squeeze(-1)
+            # sometimes the start/end positions are outside our model inputs, we ignore these terms
+            ignored_index = start_logits.size(1)
+            start_positions = start_positions.clamp(0, ignored_index)
+            end_positions = end_positions.clamp(0, ignored_index)
+
+            loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
+            start_loss = loss_fct(start_logits, start_positions)
+            end_loss = loss_fct(end_logits, end_positions)
+            total_loss = (start_loss + end_loss) / 2
+
+        if not return_dict:
+            output = (start_logits, end_logits) + transformer_outputs[2:]
+            return ((total_loss,) + output) if total_loss is not None else output
+
+        return QuestionAnsweringModelOutput(
+            loss=total_loss,
+            start_logits=start_logits,
+            end_logits=end_logits,
+            hidden_states=transformer_outputs.hidden_states,
+            attentions=transformer_outputs.attentions,
+        )
+
+    def get_input_embeddings(self):
+        return self.model.decoder.embed_tokens
+
+    def set_input_embeddings(self, value):
+        self.model.decoder.embed_tokens = value
