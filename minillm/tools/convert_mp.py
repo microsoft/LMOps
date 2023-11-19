@@ -2,24 +2,25 @@
 import torch
 import argparse
 import os
-import tqdm
-import copy
 from transformers import AutoModelForCausalLM
 from transformers import (
     decrease_mp_opt, increase_mp_opt,
     decrease_mp_gptj, increase_mp_gptj,
     decrease_mp_llama, increase_mp_llama,
+    decrease_mp_mistral, increase_mp_mistral,
 )
 
 func_map = {
     "opt": (decrease_mp_opt, increase_mp_opt),
     "gptj": (decrease_mp_gptj, increase_mp_gptj),
     "llama": (decrease_mp_llama, increase_mp_llama),
+    "llama2": (decrease_mp_llama, increase_mp_llama),
+    "mistral": (decrease_mp_mistral, increase_mp_mistral),
 }
 
 
 def main():
-    parser = argparse.ArgumentParser("Transform huggingface checkpoints to megatron+deepspeed checkpoints")
+    parser = argparse.ArgumentParser("Change the tensor parallel of a model.")
 
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--model_type", type=str, default="opt")

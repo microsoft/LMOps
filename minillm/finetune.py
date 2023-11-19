@@ -335,7 +335,7 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                         os.makedirs(save_dir_path, exist_ok=True)
                         print_rank(f"Model save to {save_dir_path}")
                         tokenizer.save_pretrained(save_dir_path)
-                        model.module.save_pretrained(save_dir_path)
+                        model.module.save_pretrained(save_dir_path, safe_serialization=False)
                 dist.barrier()
 
             # Evaluation
@@ -402,7 +402,7 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
             #     if dist.get_rank() == rank:
             #         print(f"rank: {dist.get_rank()}", model_batch["input_ids"][0][:128])
             #     dist.barrier()
-            
+            print_rank(f"{it}/{len(dataloader)}")
             dataset.move_to_device(model_batch, no_model_batch, gen_data, device)
             logits = model(**model_batch).logits
             if args.model_parallel:
@@ -492,6 +492,7 @@ def main():
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
     
+    args.fp32 = not ds_config["fp16"]["enabled"]    
     args.deepspeed_config = None
     
     # get the tokenizer

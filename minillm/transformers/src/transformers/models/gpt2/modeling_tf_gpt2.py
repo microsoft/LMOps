@@ -521,6 +521,16 @@ class TFGPT2PreTrainedModel(TFPreTrainedModel):
     # names with a '.' represents the authorized unexpected/missing layers when a TF model is loaded from a PT model
     _keys_to_ignore_on_load_unexpected = [r"h.\d+.attn.bias", r"h.\d+.crossattention.bias"]
 
+    @property
+    def input_signature(self):
+        # Although GPT-2 supports token_type_ids in theory, in practice they are rarely used, and the implementation
+        # means that passing token_type_ids=0 yields different outputs from token_type_ids=None.
+        # Therefore, we remove the token_type_ids argument by default, even though it would usually be included.
+        return {
+            "input_ids": tf.TensorSpec((None, None), tf.int32, name="input_ids"),
+            "attention_mask": tf.TensorSpec((None, None), tf.int32, name="attention_mask"),
+        }
+
 
 @dataclass
 class TFGPT2DoubleHeadsModelOutput(ModelOutput):
@@ -1082,16 +1092,10 @@ class TFGPT2ForSequenceClassification(TFGPT2PreTrainedModel, TFSequenceClassific
         else:
             if input_ids is not None:
                 sequence_lengths = (
-                    tf.reduce_sum(
-                        tf.cast(
-                            tf.math.not_equal(input_ids, self.config.pad_token_id),
-                            dtype=input_ids.dtype,
-                        ),
-                        -1,
-                        keepdims=False,
-                    )
+                    tf.argmax(tf.cast(tf.math.equal(input_ids, self.config.pad_token_id), input_ids.dtype), axis=-1)
                     - 1
                 )
+                sequence_lengths = tf.where(sequence_lengths >= 0, sequence_lengths, input_ids.shape[-1] - 1)
                 in_logits = tf.gather(logits, sequence_lengths, batch_dims=1, axis=1)
             else:
                 sequence_lengths = -1

@@ -788,19 +788,13 @@ class LukeEncoder(nn.Module):
 
             layer_head_mask = head_mask[i] if head_mask is not None else None
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     word_hidden_states,
                     entity_hidden_states,
                     attention_mask,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -920,10 +914,6 @@ class LukePreTrainedModel(PreTrainedModel):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, LukeEncoder):
-            module.gradient_checkpointing = value
-
 
 LUKE_START_DOCSTRING = r"""
 
@@ -1022,8 +1012,6 @@ LUKE_INPUTS_DOCSTRING = r"""
     LUKE_START_DOCSTRING,
 )
 class LukeModel(LukePreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"position_ids"]
-
     def __init__(self, config: LukeConfig, add_pooling_layer: bool = True):
         super().__init__(config)
         self.config = config
@@ -1118,6 +1106,7 @@ class LukeModel(LukePreTrainedModel):
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
+            self.warn_if_padding_and_no_attention_mask(input_ids, attention_mask)
             input_shape = input_ids.size()
         elif inputs_embeds is not None:
             input_shape = inputs_embeds.size()[:-1]
@@ -1278,17 +1267,7 @@ class LukeLMHead(nn.Module):
     LUKE_START_DOCSTRING,
 )
 class LukeForMaskedLM(LukePreTrainedModel):
-    _keys_to_ignore_on_save = [
-        r"lm_head.decoder.weight",
-        r"lm_head.decoder.bias",
-        r"entity_predictions.decoder.weight",
-    ]
-    _keys_to_ignore_on_load_missing = [
-        r"position_ids",
-        r"lm_head.decoder.weight",
-        r"lm_head.decoder.bias",
-        r"entity_predictions.decoder.weight",
-    ]
+    _tied_weights_keys = ["lm_head.decoder.weight", "lm_head.decoder.bias", "entity_predictions.decoder.weight"]
 
     def __init__(self, config):
         super().__init__(config)
@@ -1675,7 +1654,7 @@ class LukeForEntitySpanClassification(LukePreTrainedModel):
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
-        attention_mask=None,
+        attention_mask: Optional[torch.FloatTensor] = None,
         token_type_ids: Optional[torch.LongTensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         entity_ids: Optional[torch.LongTensor] = None,

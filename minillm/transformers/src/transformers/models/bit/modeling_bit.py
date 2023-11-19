@@ -300,7 +300,7 @@ class BitEmbeddings(nn.Module):
 
 
 # Copied from transformers.models.convnext.modeling_convnext.drop_path
-def drop_path(input, drop_prob: float = 0.0, training: bool = False):
+def drop_path(input: torch.Tensor, drop_prob: float = 0.0, training: bool = False) -> torch.Tensor:
     """
     Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
@@ -660,7 +660,6 @@ class BitPreTrainedModel(PreTrainedModel):
     config_class = BitConfig
     base_model_prefix = "bit"
     main_input_name = "pixel_values"
-    supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
         if isinstance(module, nn.Conv2d):
@@ -668,10 +667,6 @@ class BitPreTrainedModel(PreTrainedModel):
         elif isinstance(module, (nn.BatchNorm2d, nn.GroupNorm)):
             nn.init.constant_(module.weight, 1)
             nn.init.constant_(module.bias, 0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, BitModel):
-            module.gradient_checkpointing = value
 
 
 BIT_START_DOCSTRING = r"""

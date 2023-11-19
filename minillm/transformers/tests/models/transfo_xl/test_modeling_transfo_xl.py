@@ -52,7 +52,7 @@ class TransfoXLModelTester:
         d_head=8,
         d_inner=128,
         div_val=2,
-        num_hidden_layers=5,
+        num_hidden_layers=2,
         scope=None,
         seed=1,
         eos_token_id=0,
@@ -488,6 +488,10 @@ class TransfoXLModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTester
 
     @unittest.skip("The model doesn't support left padding")  # and it's not used enough to be worth fixing :)
     def test_left_padding_compatibility(self):
+        pass
+
+    @unittest.skip("This test is currently broken because of safetensors.")
+    def test_tf_from_pt_safetensors(self):
         pass
 
 

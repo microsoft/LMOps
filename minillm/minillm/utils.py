@@ -19,13 +19,6 @@ from transformers import (
     ParallelGPT2LMHeadModel,
     ParallelLlamaForCausalLM)
 
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "gptj": ParallelGPTJForCausalLM,
-    "llama": ParallelLlamaForCausalLM
-}
-
 
 def get_entropy(gen_logits, inf_mask, mask, model_parallel=False):
     inf_mask = torch.isinf(gen_logits) | inf_mask
