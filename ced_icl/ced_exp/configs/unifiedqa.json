@@ -1,0 +1,15 @@
+{
+    "dataset": "unified_qa",
+    "batch_size": 8,
+    "eval_batch_size": 16,
+    "grad_accum_factor": 1,
+    "num_shot": 5,
+    "length_norm": 0,
+    "mc_loss": 0,
+    "unlikely_loss": 0,
+    "dataset_path": "/data/unifiedqa",
+    "do_generation": true,
+    "max_valid_size": 400,
+    "num_epochs":20,
+    "smart_trunc":true
+}

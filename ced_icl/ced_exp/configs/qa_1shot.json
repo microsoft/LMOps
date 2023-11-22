@@ -1,0 +1,10 @@
+{
+    "batch_size": 1,
+    "eval_batch_size": 16,
+    "do_generation": true,
+    "num_shot" : 32,
+    "no_loss_reduce" : false,
+    "save_model" : true,
+    "do_icl": false,
+    "random_icl": false
+}
