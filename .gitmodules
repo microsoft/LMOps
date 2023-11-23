@@ -1,0 +1,3 @@
+[submodule "ced_icl/t-few"]
+	path = ced_icl/t-few
+	url = https://github.com/r-three/t-few.git
