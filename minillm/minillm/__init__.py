@@ -34,7 +34,7 @@ def train(
     sampler = PPOSampler(
         args, trainer, ppo_pipeline, chunk_size=args.chunk_size
     )
-    sampler.run_sample(args.num_rollouts)
+    sampler.run_sample(args.num_rollouts_per_device)
     
     eval_ppo_pipeline = PPOPipeline(
         args, trainer.tokenizer, "valid", eval_prompt_data, fix_prompts=True, num=args.dev_num

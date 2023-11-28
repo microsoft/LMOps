@@ -37,6 +37,7 @@ OPTS+=" --teacher-model-path ${TEACHER_CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
+OPTS+=" --n-nodes ${NNODES}"
 OPTS+=" --teacher-model-fp16"
 # OPTS+=" --gradient-checkpointing"
 # data
@@ -67,7 +68,7 @@ OPTS+=" --mid-log-num 1"
 # ppo
 OPTS+=" --type minillm"
 OPTS+=" --ppo-epochs 4"
-OPTS+=" --num-rollouts 16"
+OPTS+=" --num-rollouts 256"
 OPTS+=" --chunk-size ${CHUNK_SIZE}"
 # minillm
 OPTS+=" --length-norm"

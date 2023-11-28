@@ -36,16 +36,16 @@ class PPOSampler():
 
         self.epochs = 0
 
-    def run_sample(self, num_rollouts: int = 1024, iter_count: int = 0):
+    def run_sample(self, num_rollouts_per_device: int = 1024, iter_count: int = 0):
         """
-        Takes `num_rollouts` prompts from `pipeline`, samples model and computes the
+        Takes `num_rollouts_per_device` prompts from `pipeline`, samples model and computes the
         KL againts a reference model. It then appends PPOElements to trainer's `store`
         """
         ppo_rl_elements = []
 
-        while len(ppo_rl_elements) < num_rollouts:
+        while len(ppo_rl_elements) < num_rollouts_per_device:
             if ((not self.args.model_parallel) or mpu.get_model_parallel_rank()) == 0:
-                print(f"Rank {get_rank()}: Number Sampling Elements {len(ppo_rl_elements)} / {num_rollouts}")
+                print(f"Rank {get_rank()}: Number Sampling Elements {len(ppo_rl_elements)} / {num_rollouts_per_device}")
             try:
                 batch: PromptBatch = next(self.pipeline_iterator)
             except StopIteration:
@@ -160,7 +160,7 @@ class PPOSampler():
             ]
             ppo_rl_elements.extend(new_ppo_rl_elements)
 
-        ppo_rl_elements = ppo_rl_elements[:num_rollouts]
+        ppo_rl_elements = ppo_rl_elements[:num_rollouts_per_device]
         # Push samples and rewards to trainer's rollout storage
         self.trainer.push_to_store(ppo_rl_elements)
         
