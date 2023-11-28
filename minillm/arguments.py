@@ -36,6 +36,7 @@ def add_model_args(parser: argparse.ArgumentParser):
     group.add_argument("--model-parallel-size", type=int, default=None)
     group.add_argument("--no-value", action="store_true")
     group.add_argument("--dropout-path-rate", type=float, default=None)
+    group.add_argument("--fp32", action="store_true")
     return parser
 
 
@@ -117,6 +118,7 @@ def add_hp_args(parser: argparse.ArgumentParser):
     group.add_argument("--seed-lm", type=int, default=7)
     group.add_argument('--epochs', type=int, default=None,
                        help='total number of epochs to train over all training runs')
+    group.add_argument('--training-epochs', type=int, default=10000)
     group.add_argument("--gradient-accumulation-steps", type=int, default=1)
     group.add_argument("--gradient-checkpointing", action="store_true")
     group.add_argument("--attn-dtype", default=None)
@@ -149,7 +151,8 @@ def add_ppo_args(parser: argparse.ArgumentParser):
     group.add_argument("--reward-scaling", type=float, default=None)
     group.add_argument("--cliprange-reward", type=float, default=1)
     group.add_argument("--ppo-epochs", type=int, default=None)
-    group.add_argument("--num-rollouts", type=int, default=None)
+    group.add_argument("--num-rollouts", type=int, default=256)
+    group.add_argument("--num-rollouts-per-device", type=int, default=None)
     group.add_argument("--cliprange", type=float, default=0.2)
     group.add_argument("--chunk-size", type=int, default=None)
     group.add_argument("--gamma", type=float, default=0.95)
@@ -282,6 +285,7 @@ def get_args():
             ppo_prefix + args.save_additional_suffix
         )
         args.save = save_path
+        args.num_rollouts_per_device = args.num_rollouts // args.n_gpu
         
         if args.warmup_iters > 0:
             assert args.scheduler_name is not None
