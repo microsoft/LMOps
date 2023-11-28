@@ -65,6 +65,7 @@ def main():
     ds_config["gradient_clipping"] = args.clip_grad
     ds_config["steps_per_print"] = 10000000
     
+    args.fp32 = not ds_config["fp16"]["enabled"]
     args.deepspeed_config = None
     
     if args.teacher_model_type is None:

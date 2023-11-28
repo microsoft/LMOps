@@ -234,11 +234,11 @@ class PPOTrainer():
 
         self.evaluate()
 
-        print_rank("Total Steps:", self.total_steps, "Epochs:", self.args.epochs)
+        print_rank("Total Steps:", self.total_steps, "Data Epochs:", self.args.epochs)
         lm_epochs = 0        
         logging_stats = defaultdict(float)
 
-        for epoch in range(self.args.epochs):
+        for training_epoch in range(self.args.training_epochs):
             for ppo_epoch in range(self.n_updates_per_batch):
                 for it, batch in enumerate(self.train_dataloader):
                     if self.lm_pipeline is not None:
@@ -315,8 +315,9 @@ class PPOTrainer():
                     # Logging
                     def get_log(log_stats, one_step_time):
                         keys = ["tot_loss", "rl_loss", "pt_loss", "pg_loss", "reg_loss", "reward", "rev_kl", "stu_lens", "mixed_lens"]
-                        prefix = "train | epoch {:3d} | inner iter: {:3d}/{:3d} | ppo epoch: {:2d}/{:2d} | global iter: {:6d}/{:6d}".format(
-                            epoch,
+                        prefix = "train | data_epochs {:2d}/{:2d} | inner iter: {:3d}/{:3d} | ppo epoch: {:2d}/{:2d} | global iter: {:6d}/{:6d}".format(
+                            self.sampler.epochs,
+                            self.args.epochs,
                             it,
                             len(self.train_dataloader),
                             ppo_epoch,
@@ -350,7 +351,11 @@ class PPOTrainer():
                         logging_stats = {k:0 for k in logging_stats}
 
                     # end
-                    if self.global_iter_count >= self.total_steps:
+                    if (self.global_iter_count >= self.total_steps or self.sampler.epochs >= self.args.epochs):
+                        if self.global_iter_count >= self.total_steps:
+                            print_rank("Reached total steps {}/{}".format(self.global_iter_count, self.total_steps))
+                        else:
+                            print_rank("Reached data epochs {}/{}".format(self.sampler.epochs, self.args.epochs)) 
                         self.save()
                         results, preds, response_texts = self.evaluate_ppo()
                         if self.eval_lm_pipeline is not None:
@@ -365,7 +370,7 @@ class PPOTrainer():
 
                 self.post_backward_callback()
 
-            self.post_epoch_callback(epoch)
+            self.post_epoch_callback(training_epoch)
 
     def post_backward_callback(self):
         pass
@@ -374,7 +379,7 @@ class PPOTrainer():
         self.store.clear_history()
         # self.store.load(self.args.save)
         self.sampler.run_sample(
-            self.args.num_rollouts, self.global_iter_count
+            self.args.num_rollouts_per_device, self.global_iter_count
         )  # Collect more rollouts for training
 
     def prepare_learning(self):
@@ -394,7 +399,7 @@ class PPOTrainer():
 
         self.n_updates_per_batch = self.args.ppo_epochs
         self.total_steps = int(
-            self.args.epochs
+            self.args.training_epochs
             * self.n_updates_per_batch
             * len(self.train_dataloader)
             / self.args.gradient_accumulation_steps
