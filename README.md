@@ -97,7 +97,7 @@ Advanced technologies facilitating prompting language models.
 
 ![image](https://user-images.githubusercontent.com/1070872/208835096-54407f5f-d136-4747-9629-3219988df5d4.png)
 
-## Hiring: [aka.ms/nlpagi](https://aka.ms/nlpagi)
+## Hiring: [aka.ms/GeneralAI](https://aka.ms/GeneralAI)
 We are hiring at all levels (including FTE researchers and interns)! If you are interested in working with us on Foundation Models (aka large-scale pre-trained models) and AGI, NLP, MT, Speech, Document AI and Multimodal AI, please send your resume to <a href="mailto:fuwei@microsoft.com" class="x-hidden-focus">fuwei@microsoft.com</a>.
 
 ## License
