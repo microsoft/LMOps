@@ -2933,7 +2933,7 @@ class GenerationMixin:
                     group=mpu.get_model_parallel_group())
                 # pre-process distribution
                 next_token_scores = logits_processor(input_ids, gathered_next_token_logits)
-                next_token_scores = logits_warper(input_ids, gathered_next_token_logits)
+                next_token_scores = logits_warper(input_ids, next_token_scores)
                 probs = nn.functional.softmax(next_token_scores.float(), dim=-1)
                 partition_size = next_token_scores.size(-1) // mpu.get_model_parallel_world_size()
                 next_token_scores = next_token_scores[:, mpu.get_model_parallel_rank()*partition_size:(mpu.get_model_parallel_rank()+1)*partition_size]
