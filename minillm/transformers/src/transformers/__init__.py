@@ -520,6 +520,8 @@ _import_structure = {
     "models.prophetnet": ["PROPHETNET_PRETRAINED_CONFIG_ARCHIVE_MAP", "ProphetNetConfig", "ProphetNetTokenizer"],
     "models.pvt": ["PVT_PRETRAINED_CONFIG_ARCHIVE_MAP", "PvtConfig"],
     "models.qdqbert": ["QDQBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "QDQBertConfig"],
+    "models.qwen": ["QWEN_PRETRAINED_CONFIG_ARCHIVE_MAP","QWenConfig"],
+    "models.qwen_parallel": ["QWEN_PRETRAINED_CONFIG_ARCHIVE_MAP","QWenConfig"],
     "models.rag": ["RagConfig", "RagRetriever", "RagTokenizer"],
     "models.realm": ["REALM_PRETRAINED_CONFIG_ARCHIVE_MAP", "RealmConfig", "RealmTokenizer"],
     "models.reformer": ["REFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP", "ReformerConfig"],
@@ -833,6 +835,7 @@ else:
     _import_structure["models.nllb"].append("NllbTokenizer")
     _import_structure["models.pegasus"].append("PegasusTokenizer")
     _import_structure["models.plbart"].append("PLBartTokenizer")
+    _import_structure["models.qwen"].append("QWenTokenizer")
     _import_structure["models.reformer"].append("ReformerTokenizer")
     _import_structure["models.rembert"].append("RemBertTokenizer")
     _import_structure["models.seamless_m4t"].append("SeamlessM4TTokenizer")
@@ -2647,6 +2650,22 @@ else:
             "QDQBertModel",
             "QDQBertPreTrainedModel",
             "load_tf_weights_in_qdqbert",
+        ]
+    )
+    _import_structure["models.qwen"].extend(
+        [
+            "QWenLMHeadModel",
+            "QWenModel",
+            "QWenPreTrainedModel",
+        ]
+    )
+    _import_structure["models.qwen_parallel"].extend(
+        [
+            "ParallelQWenLMHeadModel",
+            "ParallelQWenModel",
+            "ParallelQWenPreTrainedModel",
+            "decrease_mp_qwen",
+            "increase_mp_qwen",
         ]
     )
     _import_structure["models.rag"].extend(
@@ -4775,6 +4794,7 @@ if TYPE_CHECKING:
     from .models.prophetnet import PROPHETNET_PRETRAINED_CONFIG_ARCHIVE_MAP, ProphetNetConfig, ProphetNetTokenizer
     from .models.pvt import PVT_PRETRAINED_CONFIG_ARCHIVE_MAP, PvtConfig
     from .models.qdqbert import QDQBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, QDQBertConfig
+    from .models.qwen import QWEN_PRETRAINED_CONFIG_ARCHIVE_MAP, QWenConfig
     from .models.rag import RagConfig, RagRetriever, RagTokenizer
     from .models.realm import REALM_PRETRAINED_CONFIG_ARCHIVE_MAP, RealmConfig, RealmTokenizer
     from .models.reformer import REFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP, ReformerConfig
@@ -5070,6 +5090,7 @@ if TYPE_CHECKING:
         from .models.nllb import NllbTokenizer
         from .models.pegasus import PegasusTokenizer
         from .models.plbart import PLBartTokenizer
+        from .models.qwen import QWenTokenizer
         from .models.reformer import ReformerTokenizer
         from .models.rembert import RemBertTokenizer
         from .models.seamless_m4t import SeamlessM4TTokenizer
@@ -6574,6 +6595,18 @@ if TYPE_CHECKING:
             QDQBertModel,
             QDQBertPreTrainedModel,
             load_tf_weights_in_qdqbert,
+        )
+        from .models.qwen import (
+            QWenLMHeadModel,
+            QWenModel,
+            QWenPreTrainedModel,
+        )
+        from .models.qwen_parallel import (
+            ParallelQWenLMHeadModel,
+            ParallelQWenModel,
+            ParallelQWenPreTrainedModel,
+            decrease_mp_qwen,
+            increase_mp_qwen,
         )
         from .models.rag import RagModel, RagPreTrainedModel, RagSequenceForGeneration, RagTokenForGeneration
         from .models.realm import (

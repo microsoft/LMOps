@@ -8,6 +8,7 @@ from transformers import (
     decrease_mp_gptj, increase_mp_gptj,
     decrease_mp_llama, increase_mp_llama,
     decrease_mp_mistral, increase_mp_mistral,
+    decrease_mp_qwen, increase_mp_qwen,
 )
 
 func_map = {
@@ -16,6 +17,7 @@ func_map = {
     "llama": (decrease_mp_llama, increase_mp_llama),
     "llama2": (decrease_mp_llama, increase_mp_llama),
     "mistral": (decrease_mp_mistral, increase_mp_mistral),
+    "qwen": (decrease_mp_qwen, increase_mp_qwen),
 }
 
 
@@ -39,7 +41,16 @@ def main():
         args.save_path = os.path.join(args.input_path, f"mp{args.target_mp_size}")
         assert args.exist_ok or not any([os.path.exists(os.path.join(args.save_path, f"pytorch_model_{i}.bin")) for i in range(args.target_mp_size)])
         os.makedirs(args.save_path, exist_ok=True)
-        model_hf = AutoModelForCausalLM.from_pretrained(args.input_path, torch_dtype=torch.float16).state_dict()
+        if args.model_type=='qwen':
+            model_hf =  AutoModelForCausalLM.from_pretrained(
+                args.input_path,
+                use_flash_attn=False,
+                fp16=True if args.half else False,
+                fp32=True if not args.half else False,
+                bf16=False,
+            ).state_dict()
+        else:
+            model_hf = AutoModelForCausalLM.from_pretrained(args.input_path, torch_dtype=torch.float16).state_dict()
         d_list = increase_mp(model_hf, args.target_mp_size, half=args.half)
         for i, d in enumerate(d_list):
             torch.save(d, os.path.join(args.save_path, f"pytorch_model_{i}.bin"))
@@ -62,7 +73,16 @@ def main():
         torch.save(d, os.path.join(args.input_path, "pytorch_model.bin"))
         
         os.makedirs(args.save_path, exist_ok=True)
-        model_hf = AutoModelForCausalLM.from_pretrained(args.input_path, torch_dtype=torch.float16).state_dict()
+        if args.model_type=='qwen':
+            model_hf =  AutoModelForCausalLM.from_pretrained(
+                args.input_path,
+                use_flash_attn=False,
+                fp16=True if args.half else False,
+                fp32=True if not args.half else False,
+                bf16=False,
+            ).state_dict()
+        else:
+            model_hf = AutoModelForCausalLM.from_pretrained(args.input_path, torch_dtype=torch.float16).state_dict()
         d_list = increase_mp(model_hf, args.target_mp_size, half=args.half)
         for i, d in enumerate(d_list):
             torch.save(d, os.path.join(args.save_path, f"pytorch_model_{i}.bin"))
