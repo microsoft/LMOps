@@ -51,8 +51,12 @@ def main():
     valid_bin_file = os.path.join(args.processed_data_dir, f"valid_{0}.bin")
     valid_idx_file = os.path.join(args.processed_data_dir, f"valid_{0}.idx")
 
-    train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=np.uint16)
-    valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=np.uint16)
+    if args.model_type!="qwen":
+        train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=np.uint16)
+        valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=np.uint16)
+    else:
+        train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=np.uint32)
+        valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=np.uint32)
 
     # put tokenized data into binary_builder
     buffer = []

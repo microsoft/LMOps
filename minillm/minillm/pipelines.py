@@ -46,7 +46,7 @@ class PPOPipeline():
         
         assert len(data) <= self.max_prompt_length
         
-        if 65535 in data:
+        if self.args.model_type!="qwen" and 65535 in data:
             source_len = np.where(data==65535)[0][0]
             prompt = data[:source_len]
             response = data[source_len+1:]
@@ -140,7 +140,7 @@ class LMPipeline():
         input_ids = samp["input_ids"]
         source_len = 1
         
-        if 65535 in input_ids:
+        if self.args.model_type!="qwen" and 65535 in input_ids:
             source_len = np.where(input_ids==65535)[0][0]
             input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
         input_ids = input_ids[:self.max_length]
