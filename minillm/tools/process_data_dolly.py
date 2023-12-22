@@ -21,19 +21,33 @@ class Encoder(object):
 
     def encode(self, line):
         line = json.loads(line)
-        if len(line["input"]) == 0:
-            template = (
-                "Below is an instruction that describes a task. "
-                "Write a response that appropriately completes the request.\n\n"
-                "### Instruction:\n{instruction}\n\n### Response:\n"
-            )
+        if "input" not in line or len(line["input"]) == 0:
+            if self.args.model_type!="qwen":
+                template = (
+                    "Below is an instruction that describes a task. "
+                    "Write a response that appropriately completes the request.\n\n"
+                    "### Instruction:\n{instruction}\n\n### Response:\n"
+                )
+            else:
+                template = (
+                    "<|im_start|>Below is an instruction that describes a task. "
+                    "Write a response that appropriately completes the request.\n\n"
+                    "### Instruction:\n{instruction}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
+                )
             prompt = template.format(instruction=line["instruction"])
         else:
-            template = (
-                "Below is an instruction that describes a task, paired with an input that provides further context. "
-                "Write a response that appropriately completes the request.\n\n"
-                "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n"
-            )
+            if self.args.model_type!="qwen":
+                template = (
+                    "Below is an instruction that describes a task, paired with an input that provides further context. "
+                    "Write a response that appropriately completes the request.\n\n"
+                    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n"
+                )
+            else:
+                template = (
+                    "<|im_start|>Below is an instruction that describes a task, paired with an input that provides further context. "
+                    "Write a response that appropriately completes the request.\n\n"
+                    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
+                )
             prompt = template.format(instruction=line["instruction"], input=line["input"])
             
         response = line["output"]
@@ -82,7 +96,10 @@ def main():
         bin_file = os.path.join(args.processed_data_dir, f"{split}_{0}.bin")
         idx_file = os.path.join(args.processed_data_dir, f"{split}_{0}.idx")
 
-        binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint16)
+        if args.model_type!="qwen":
+            binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint16)
+        else:
+            binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint32)
 
         # put tokenized data into binary_builder
         inst_num = 0

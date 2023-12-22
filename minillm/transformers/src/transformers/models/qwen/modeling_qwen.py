@@ -525,9 +525,15 @@ class QWenAttention(nn.Module):
                         attention_mask = attention_mask.masked_fill(~causal_mask, torch.finfo(query.dtype).min)
                 else:
                     attention_mask = causal_mask
+                # attn_output = F.scaled_dot_product_attention(
+                #     query, key, value, attn_mask=attention_mask
+                # ).transpose(1, 2)
                 attn_output = F.scaled_dot_product_attention(
-                    query, key, value, attn_mask=attention_mask
-                ).transpose(1, 2)
+                    query.to(torch.float32),
+                    key.to(torch.float32),
+                    value.to(torch.float32),
+                    attn_mask=attention_mask.to(torch.float32)
+                ).to(query.dtype).transpose(1, 2)
                 attn_weight = None
             else:
                 attn_output, attn_weight = self._attn(
@@ -1021,7 +1027,7 @@ class QWenLMHeadModel(QWenPreTrainedModel):
 
     def set_force_gradient_checkpointing(self, value):
         self.transformer.force_gradient_checkpointing = value
-        
+
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
