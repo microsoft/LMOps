@@ -49,12 +49,20 @@ def get_teacher_model(args, device):
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            model = parallel_model_map[args.model_type](config).half()
+            if args.model_type=="qwen":
+                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
+            else:
+                model = parallel_model_map[args.model_type](config).half()
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:
         config.is_model_parallel = False
-        model = AutoModelForCausalLM.from_pretrained(args.teacher_model_path, config=config, device_map={"": device}, torch_dtype=torch.float16)
+        model = AutoModelForCausalLM.from_pretrained(
+            args.teacher_model_path, 
+            config=config, 
+            device_map={"": device}, 
+            torch_dtype=torch.float16 if args.model_type!="qwen" else torch.bfloat16
+        )
 
         if args.peft is not None and args.teacher_peft_path is not None:
             if args.peft == "lora":
@@ -123,6 +131,10 @@ def setup_model_and_optimizer(args, ds_config, device, set_optim=True):
     else:
         optimizer, lr_scheduler = None, None
         
+    if args.model_type=="qwen" and ds_config['fp16']['enabled']==True:
+        import copy
+        ds_config['bf16']=copy.deepcopy(ds_config['fp16'])
+        ds_config['fp16']['enabled']=False
     model, optimizer, _, lr_scheduler = deepspeed.initialize(
         model=model,
         optimizer=optimizer,

@@ -142,7 +142,10 @@ def get_model(args, device):
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            model = parallel_model_map[args.model_type](config).half()
+            if args.model_type=="qwen":
+                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
+            else:
+                model = parallel_model_map[args.model_type](config).half()
         load_parallel(model, args.model_path)
 
         if mpu.get_data_parallel_rank() == 0:
@@ -151,7 +154,10 @@ def get_model(args, device):
                 sum([p.nelement() for p in model.parameters()])), flush=True)
     else:
         config.is_model_parallel = False
-        dtype = torch.float32 if args.fp32 else torch.float16
+        if args.model_type=="qwen":
+            dtype = torch.float32 if args.fp32 else torch.float16
+        else:
+            dtype = torch.float32 if args.fp32 else torch.bfloat16
         model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=dtype)
 
         if args.peft is not None:
