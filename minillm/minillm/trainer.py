@@ -131,6 +131,10 @@ class PPOTrainer():
         return scheduler
 
     def setup_ds(self, model, optimizer=None, scheduler=None):
+        if self.args.model_type=="qwen" and self.ds_config['fp16']['enabled']==True:
+            import copy
+            self.ds_config['bf16']=copy.deepcopy(self.ds_config['fp16'])
+            self.ds_config['fp16']['enabled']=False
         model, optimizer, _, scheduler = deepspeed.initialize(
             model=model,
             optimizer=optimizer,
