@@ -63,7 +63,7 @@ class PromptDataset(Dataset):
         print_rank("Loading Data")
         for d in tqdm(data_origin, disable=(get_rank() != 0)):
             prompt = d["prompt"].replace("<n>", "\n")
-            prompt_ids = self.tokenizer.encode(prompt)
+            prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
             output_ids = None
             if "output" in d:
                 if isinstance(d["output"], list):
