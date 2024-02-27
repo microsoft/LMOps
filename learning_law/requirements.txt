@@ -1,0 +1,6 @@
+numpy
+torch
+matplotlib
+wandb
+cvxpy
+transformers
