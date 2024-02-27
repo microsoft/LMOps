@@ -1,6 +1,9 @@
 # Towards Optimal Learning of Language Models
 
+Obejctive
 ![Objective](./figures/objective.png "Objective")
+
+A: Learning Law. B: Empirical Evidence.
 ![Objective](./figures/learning_law.png "Objective")
 
 
