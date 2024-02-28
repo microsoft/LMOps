@@ -1,5 +1,5 @@
 deepspeed
-transformers==4.35.2
+transformers==4.36.0
 protobuf
 loralib
 einops
