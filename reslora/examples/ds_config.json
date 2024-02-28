@@ -1,0 +1,22 @@
+{
+  "train_micro_batch_size_per_gpu": "auto",
+  "gradient_accumulation_steps": "auto",
+  "optimizer": {
+    "type": "Adam",
+    "params": {
+      "lr": "auto"
+    }
+  },
+  "fp16": {
+    "enabled": "auto",
+    "loss_scale_window": 500,
+    "min_loss_scale": 0.05
+  },
+  "zero_optimization": {
+      "stage": 2,
+      "offload_optimizer": {
+      "device": "cpu",
+      "pin_memory": true
+    }
+  }
+}
