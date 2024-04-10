@@ -27,9 +27,17 @@ Our code is based in [this commit](https://github.com/huggingface/transformers/c
 
 ## 2 Data
 ### 2.1 Resources
-+ The training/evaluation intruction-response data before processing can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The training/evaluation intruction-response data before processing can be downloaded via:
+```bash
+DLINK=$(echo -n "aHR0cHM6Ly9jb252ZXJzYXRpb25odWIuYmxvYi5jb3JlLndpbmRvd3MubmV0L2JlaXQtc2hhcmUtcHVibGljL01pbmlMTE0vZGF0YS50YXI/c3Y9MjAyMy0wMS0wMyZzdD0yMDI0LTA0LTEwVDEzJTNBMTElM0E0NFomc2U9MjA1MC0wNC0xMVQxMyUzQTExJTNBMDBaJnNyPWMmc3A9ciZzaWc9NGNYSklqVlJaSElCV3FIalBnRG4lMkYwMW9jenBEV1hpcG1QQ1VrM1o4dmJRJTNE" | base64 --decode)
+wget -O data.tar $DLINK
+```
 + The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
-+ The processed data can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/processed_data.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The processed data can be downloaded via:
+```bash
+DLINK=$(echo -n "aHR0cHM6Ly9jb252ZXJzYXRpb25odWIuYmxvYi5jb3JlLndpbmRvd3MubmV0L2JlaXQtc2hhcmUtcHVibGljL01pbmlMTE0vcHJvY2Vzc2VkX2RhdGEudGFyP3N2PTIwMjMtMDEtMDMmc3Q9MjAyNC0wNC0xMFQxMyUzQTExJTNBNDRaJnNlPTIwNTAtMDQtMTFUMTMlM0ExMSUzQTAwWiZzcj1jJnNwPXImc2lnPTRjWEpJalZSWkhJQldxSGpQZ0RuJTJGMDFvY3pwRFdYaXBtUENVazNaOHZiUSUzRA==" | base64 --decode)
+wget -O processed_data.tar $DLINK
+```
 
 
 ### 2.2 Data Processing
@@ -53,9 +61,22 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 
 ## 3 Models
 ### 3.1 Resources
-+ The baselines and MiniLLM models based on GPT-2 can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/gpt2.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
-+ The baselines and MiniLLM models based on OPT can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/opt.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
-+ The baselines and MiniLLM models based on LLaMA can be downloaded from this [link](https://conversationhub.blob.core.windows.net/beit-share-public/MiniLLM/llama.tar?sv=2021-10-04&st=2023-06-08T11%3A16%3A02Z&se=2033-06-09T11%3A16%3A00Z&sr=c&sp=r&sig=N4pfCVmSeq4L4tS8QbrFVsX6f6q844eft8xSuXdxU48%3D).
++ The baselines and MiniLLM models based on GPT-2 can be downloaded from this:
+```bash
+DLINK=$(echo -n "aHR0cHM6Ly9jb252ZXJzYXRpb25odWIuYmxvYi5jb3JlLndpbmRvd3MubmV0L2JlaXQtc2hhcmUtcHVibGljL01pbmlMTE0vZ3B0Mi50YXI/c3Y9MjAyMy0wMS0wMyZzdD0yMDI0LTA0LTEwVDEzJTNBMTElM0E0NFomc2U9MjA1MC0wNC0xMVQxMyUzQTExJTNBMDBaJnNyPWMmc3A9ciZzaWc9NGNYSklqVlJaSElCV3FIalBnRG4lMkYwMW9jenBEV1hpcG1QQ1VrM1o4dmJRJTNE" | base64 --decode)
+wget -O gpt2.tar $DLINK
+```
++ The baselines and MiniLLM models based on OPT can be downloaded from this:
+```bash
+DLINK=$(echo -n "aHR0cHM6Ly9jb252ZXJzYXRpb25odWIuYmxvYi5jb3JlLndpbmRvd3MubmV0L2JlaXQtc2hhcmUtcHVibGljL01pbmlMTE0vb3B0LnRhcj9zdj0yMDIzLTAxLTAzJnN0PTIwMjQtMDQtMTBUMTMlM0ExMSUzQTQ0WiZzZT0yMDUwLTA0LTExVDEzJTNBMTElM0EwMFomc3I9YyZzcD1yJnNpZz00Y1hKSWpWUlpISUJXcUhqUGdEbiUyRjAxb2N6cERXWGlwbVBDVWszWjh2YlElM0Q=" | base64 --decode)
+wget -O opt.tar $DLINK
+```
++ The baselines and MiniLLM models based on LLaMA can be downloaded from this:
+```bash
+DLINK=$(echo -n "aHR0cHM6Ly9jb252ZXJzYXRpb25odWIuYmxvYi5jb3JlLndpbmRvd3MubmV0L2JlaXQtc2hhcmUtcHVibGljL01pbmlMTE0vbGxhbWEudGFyP3N2PTIwMjMtMDEtMDMmc3Q9MjAyNC0wNC0xMFQxMyUzQTExJTNBNDRaJnNlPTIwNTAtMDQtMTFUMTMlM0ExMSUzQTAwWiZzcj1jJnNwPXImc2lnPTRjWEpJalZSWkhJQldxSGpQZ0RuJTJGMDFvY3pwRFdYaXBtUENVazNaOHZiUSUzRA==" | base64 --decode)
+wget -O llama.tar $DLINK
+```
+
 #### Base Pre-trained Models
 To run fine-tuning or standard KD baselines, you need to download the model checkpoints from [Huggingface Model Hub] and put them in `checkpoints/`. For example, for gpt2-large, you can download the model from this [link](https://huggingface.co/gpt2-large/tree/main) and put them in `checkpoints/gpt2-large`.
 
