@@ -1,6 +1,6 @@
 # $Se^2$: Sequential Example Selection for In-Context Learning
 
-This repository contains the code implementation, data and checkpoint of our paper [$Se^2$: Sequential Example Selection for In-Context Learning](https://arxiv.org/abs/2402.13874v2).
+This repository contains the code implementation, data and checkpoint of our paper [Se2: Sequential Example Selection for In-Context Learning](https://arxiv.org/abs/2402.13874v2).
 
 We propose **$Se^2$** (**Se**quential Example **Se**lection to improving LLM's In-Context Learning preformance), which aims to build ideal examples for In-Context Learning. **$Se^2$** differs from the traditional "select then organize/concatenate" paradigm by capturing LLM feedback on varying contexts to train a sequential-aware retriever. Meanwhile, it utilize beam search to seek and construct high-quality example sequences.
 
