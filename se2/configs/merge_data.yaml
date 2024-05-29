@@ -1,0 +1,9 @@
+step1_train:
+step1_valid:
+step2_train:
+step2_valid:
+step3_train:
+step3_valid:
+
+train_output_path: # path to save the sampled prompts for each task input
+valid_output_path:
