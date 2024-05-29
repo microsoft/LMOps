@@ -1,0 +1,99 @@
+train_file: ???
+valid_file: ???
+top_k: ???
+loss_type: dpr
+hard_neg: ???
+prompt_pool_path: ???
+prompt_setup_type: ???
+task_setup_type: ???
+train_clusters: 
+multi_task: false
+
+# @package _group_
+se2_dataset:
+  _target_: dpr.data.biencoder_data.Se2Dataset
+  file: ${..train_file}
+  top_k: ${..top_k}
+  loss_type: ${..loss_type}
+  hard_neg: ${..hard_neg}
+  prompt_pool_path: ${..prompt_pool_path}
+  prompt_setup_type: ${..prompt_setup_type}
+  task_setup_type: ${..task_setup_type}
+  train_clusters: ${..train_clusters}
+  multi_task: ${..multi_task}
+  split: train
+
+#for validation
+se2_valid_dataset:
+  _target_: dpr.data.biencoder_data.Se2Dataset
+  file: ${..valid_file} 
+  top_k: ${..top_k}
+  hard_neg: ${..hard_neg}
+  prompt_pool_path: ${..prompt_pool_path}
+  prompt_setup_type: ${..prompt_setup_type}
+  task_setup_type: ${..task_setup_type}
+  train_clusters: ${..train_clusters}
+  multi_task: ${..multi_task}
+  split: valid
+
+break_train_q:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.break-train-q
+break_train_qd:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.break-train-qd
+break_train_d:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.break-train-d
+grailqa_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.grailqa-dev
+  
+grailqa_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.grailqa-train
+
+nq_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.nq-train
+
+nq_train_hn1:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.nq-adv-hn-train
+
+nq_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.nq-dev
+
+trivia_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.trivia-train
+
+trivia_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.trivia-dev
+
+squad1_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.squad1-train
+
+squad1_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.squad1-dev
+
+webq_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.webq-train
+  
+webq_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.webq-dev
+  
+curatedtrec_train:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.curatedtrec-train
+  
+curatedtrec_dev:
+  _target_: dpr.data.biencoder_data.JsonQADataset
+  file: data.retriever.curatedtrec-dev
+    
