@@ -1,0 +1,8 @@
+LICENSE
+README.md
+setup.py
+dpr.egg-info/PKG-INFO
+dpr.egg-info/SOURCES.txt
+dpr.egg-info/dependency_links.txt
+dpr.egg-info/requires.txt
+dpr.egg-info/top_level.txt
