@@ -1,0 +1,73 @@
+# extractive reader configuration
+
+defaults:
+  - encoder: hf_bert
+  - train: extractive_reader_default
+
+# A trained reader checkpoint file to initialize the model
+model_file:
+
+# Whether to lower case the input text. Set True for uncased models, False for the cased ones.
+do_lower_case: True
+
+seed: 42
+
+# glob expression for train data files
+train_files:
+
+# glob expression for dev data files
+dev_files:
+
+# Total amount of positive and negative passages per question
+passages_per_question: 24
+
+# Total amount of positive and negative passages per question for evaluation
+passages_per_question_predict: 50
+
+# The output directory where the model checkpoints will be written to
+output_dir:
+
+# Max amount of answer spans to marginalize per singe passage
+max_n_answers: 10
+
+# The maximum length of an answer that can be generated. This is needed because the start
+# and end predictions are not conditioned on one another
+max_answer_length: 10
+
+# Top retrieval passages thresholds to analyze prediction results for
+eval_top_docs:
+  - 50
+
+checkpoint_file_name: dpr_extractive_reader
+
+# Path to a file to write prediction results to
+prediction_results_file:
+
+# Enables fully resumable mode
+fully_resumable: False
+
+# File with the original train dataset passages (json format)
+gold_passages_src:
+
+# File with the original dataset passages (json format)
+gold_passages_src_dev:
+
+# num of threads to pre-process data.
+num_workers: 16
+
+# TODO: move to a conf group
+# local_rank for distributed training on gpus
+local_rank: -1
+global_loss_buf_sz: 150000
+device:
+distributed_world_size:
+no_cuda: False
+n_gpu:
+fp16: False
+
+# For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+#        "See details at https://nvidia.github.io/apex/amp.html
+fp16_opt_level: O1
+
+# a list of tokens to avoid tokenization
+special_tokens:
