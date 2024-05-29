@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES="0,1" python train_dense_encoder.py train_datasets=[grailqa_train] dev_datasets=[grailqa_dev] train=biencoder_local output_dir=/media/disk1/ohadr/dropout0.15
+CUDA_VISIBLE_DEVICES="4" python train_dense_encoder.py train_datasets=[break_train_qd] train=biencoder_local output_dir=/media/disk1/ohadr/break_qd

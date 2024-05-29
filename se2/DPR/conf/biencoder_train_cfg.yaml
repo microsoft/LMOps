@@ -1,0 +1,48 @@
+# configuration groups
+defaults:
+  - encoder: hf_bert
+  - train: biencoder_se2
+  - datasets: encoder_train_default
+
+loss_type: dpr
+
+train_datasets:
+dev_datasets:
+output_dir:
+train_sampling_rates:
+loss_scale_factors:
+
+# Whether to lower case the input text. Set True for uncased models, False for the cased ones.
+do_lower_case: True
+
+fix_ctx_encoder: False
+val_av_rank_start_epoch: 0 
+seed: 12345
+checkpoint_file_name: dpr_biencoder
+
+# A trained bi-encoder checkpoint file to initialize the model
+model_file:
+
+# TODO: move to a conf group
+# local_rank for distributed training on gpus
+local_rank: -1
+global_loss_buf_sz: 592000
+device:
+distributed_world_size:
+distributed_port:
+no_cuda: False
+n_gpu:
+fp16: False
+
+# For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+#        "See details at https://nvidia.github.io/apex/amp.html
+fp16_opt_level: O1
+
+# tokens which won't be split by tokenizer
+special_tokens:
+
+ignore_checkpoint_offset: False
+ignore_checkpoint_optimizer: False
+
+# set to >1 to enable multiple query encoders
+multi_q_encoder: False
