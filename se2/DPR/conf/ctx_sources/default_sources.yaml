@@ -1,0 +1,14 @@
+# @package _group_
+
+dpr_se2:
+  _target_: dpr.data.retriever_data.Se2CtxSrc
+  prompt_setup_type: ???
+  prompt_pool_path: ???
+  train_clusters:
+dpr_wiki:
+  _target_: dpr.data.retriever_data.CsvCtxSrc
+  file: data.wikipedia_split.psgs_w100
+  id_prefix: 'wiki:'
+dpr_grail:
+  _target_: dpr.data.retriever_data.CsvCtxSrc
+  file: data.wikipedia_split.entities

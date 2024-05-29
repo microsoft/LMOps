@@ -1,0 +1,5 @@
+output_path: ??? # path to save the sampled prompts for each task input
+prompt_pool_path: ??? # path to save the constructed prompt pool
+task_name: ???
+L: 50 # number of sampled prompts for scoring, for each task input
+cache_dir: ??? # dir for caching datasets and models
