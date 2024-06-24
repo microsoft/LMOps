@@ -207,10 +207,11 @@ This project is licensed under the license found in the LICENSE file in the root
 # Citation <a name="citation"></a>
 If you find our work helpful, please cite us:
 ```bibtex
-@inproceedings{UPRISE,
+@inproceedings{cheng2023uprise,
   title={UPRISE: Universal Prompt Retrieval for Improving Zero-Shot Evaluation},
-  author={Daixuan Cheng and Shaohan Huang and Junyu Bi and Yuefeng Zhan and Jianfeng Liu and Yujing Wang and Hao Sun and Furu Wei and Denvy Deng and Qi Zhang},
-  url={https://arxiv.org/abs/2303.08518},
-  year={2023},
+  author={Cheng, Daixuan and Huang, Shaohan and Bi, Junyu and Zhan, Yuefeng and Liu, Jianfeng and Wang, Yujing and Sun, Hao and Wei, Furu and Deng, Weiwei and Zhang, Qi},
+  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
+  pages={12318--12337},
+  year={2023}
 }
 ```
