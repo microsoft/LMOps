@@ -34,7 +34,6 @@ def search(entry, overall_cls, segmenter, inited_type_map, args):
 
     return {'read_compre': read_compre, 'file_name': entry['file_name']}
 
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -62,7 +61,7 @@ if __name__ == "__main__":
 
     # load sentences in the input file
     print('loading raw texts in the input folder...')
-    paths=glob.glob(f'{args.input_dir}/*')
+    paths=sorted(glob.glob(f'{args.input_dir}/*'))
     print(f'paths: {paths}')
 
 

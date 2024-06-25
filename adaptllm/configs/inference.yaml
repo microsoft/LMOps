@@ -1,0 +1,26 @@
+model_name: ??? # hf model name
+task_name: ??? # a string concatenating all the evaluation tasks using `+`
+output_dir: /tmp/output # for saving the prediction files
+res_dir: /tmp/res # for saving the evaluation scores of each task
+max_length: 2048 # max length of tokenizer
+generate_max_len: 100 # for text completion task
+n_tokens: 2048 # max length of (prompt + task input+ task output)
+cache_dir: /tmp/cache # for caching hf models and datasets
+add_bos_token: ???
+model_parallel: ??? # True or false
+
+dataset_reader:
+  _target_: src.dataset_readers.inference_dsr.InferenceDatasetReader
+  model_name: ${model_name}
+  task_name: ${task_name}
+  n_tokens: ${n_tokens}
+  cache_dir: ${cache_dir}
+  max_length: ${max_length}
+  generate_max_len: ${generate_max_len}
+  add_bos_token: ${add_bos_token}
+model:
+  _target_: src.models.model.get_model
+  pretrained_model_name_or_path: ${model_name}
+  cache_dir: ${cache_dir}
+  trust_remote_code: true
+  model_parallel: ${model_parallel}

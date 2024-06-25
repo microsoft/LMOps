@@ -1,2 +1,15 @@
 pysbd
 sentencepiece
+tqdm==4.64.1
+progressbar==2.5
+accelerate
+cached_property
+scikit-learn
+datasets
+transformers
+tokenizers
+hydra-core
+more_itertools
+nereval
+omegaconf==2.3.0
+huggingface-hub
