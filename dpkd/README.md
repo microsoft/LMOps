@@ -1,6 +1,6 @@
 # Direct Preference Knowledge Distillation for Large Language Models
 
-## 1 Environment
+## Environment
 ```bash
 conda create -n dpkd python=3.11
 conda activate dpkd
@@ -11,17 +11,19 @@ and
 bash install.sh
 ```
 
+## Run Distillation
 
-## 2 Runner
 Train runner:
 ```bash
 bash scripts/dpkd-gpt2_base_runner.sh  PATH_TO_DPKD 
 ```
+
+## Evaluation
+
 Evaluation runner:
 ```bash
 bash scripts/dpkd-gpt2_base_evaluate.sh  PATH_TO_DPKD 
 ```
-
 
 ## 3 Citation
 
