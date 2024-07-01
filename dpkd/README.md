@@ -27,4 +27,12 @@ bash scripts/dpkd-gpt2_base_evaluate.sh  PATH_TO_DPKD
 
 ## 3 Citation
 
+```bibtex
+@article{dpkd,
+  title={Direct Preference Knowledge Distillation for Large Language Models},
+  author={Yixing Li and Yuxian Gu and Li Dong and Dequan Wang and Yu Cheng and Furu Wei},
+  journal={arXiv preprint arXiv:2406.19774},
+  year={2024}
+}
+```
 
