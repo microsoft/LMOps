@@ -25,7 +25,7 @@ Evaluation runner:
 bash scripts/dpkd-gpt2_base_evaluate.sh  PATH_TO_DPKD 
 ```
 
-## 3 Citation
+## Citation
 
 ```bibtex
 @article{dpkd,
