@@ -29,12 +29,12 @@ Our code is based in [this commit](https://github.com/huggingface/transformers/c
 ### 2.1 Resources
 + The training/evaluation intruction-response data before processing can be downloaded via:
 ```bash
-wget -O data.tar https://unilm.blob.core.windows.net/minillm/data.tar
+wget -O data.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/data.tar
 ```
 + The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
 + The processed data can be downloaded via:
 ```bash
-wget -O processed_data.tar https://unilm.blob.core.windows.net/minillm/processed_data.tar
+wget -O processed_data.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/processed_data.tar
 ```
 
 
@@ -61,15 +61,15 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 ### 3.1 Resources
 + The baselines and MiniLLM models based on GPT-2 can be downloaded from this:
 ```bash
-wget -O gpt2.tar https://unilm.blob.core.windows.net/minillm/gpt2.tar
+wget -O gpt2.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/gpt2.tar
 ```
 + The baselines and MiniLLM models based on OPT can be downloaded from this:
 ```bash
-wget -O opt.tar https://unilm.blob.core.windows.net/minillm/opt.tar
+wget -O opt.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/opt.tar
 ```
 + The baselines and MiniLLM models based on LLaMA can be downloaded from this:
 ```bash
-wget -O llama.tar https://unilm.blob.core.windows.net/minillm/llama.tar
+wget -O llama.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/llama.tar
 ```
 
 #### Base Pre-trained Models
