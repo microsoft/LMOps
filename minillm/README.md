@@ -1,6 +1,11 @@
 # MiniLLM: Knowledge Distillation of Large Language Models
 
+[paper](https://arxiv.org/abs/2306.08543) | [huggingface](https://huggingface.co/MiniLLM)
+
 ![Method](./figures/method.png)
+
+![Results](./figures/results.png)
+
 ## 1 Environment
 ```bash
 pip3 install -e transformers/
@@ -25,17 +30,13 @@ bash install.sh
 
 Our code is based in [this commit](https://github.com/huggingface/transformers/commit/85fde09c97213bf7e8625f83096bb2a9e183f987) of HuggingFace Transformers.
 
+Our data and pre-trained models are uploaded to our HuggingFace [repo](https://huggingface.co/MiniLLM).
+
 ## 2 Data
 ### 2.1 Resources
-+ The training/evaluation intruction-response data before processing can be downloaded via:
-```bash
-wget -O data.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/data.tar
-```
++ The training/evaluation intruction-response data before processing can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly), [self-inst](https://huggingface.co/datasets/MiniLLM/self-inst), [vicuna](https://huggingface.co/datasets/MiniLLM/Vicuna), [sinst](https://huggingface.co/datasets/MiniLLM/sinst), and [uinst](https://huggingface.co/datasets/MiniLLM/uinst)
 + The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
-+ The processed data can be downloaded via:
-```bash
-wget -O processed_data.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/processed_data.tar
-```
++ The processed data can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly-processed), [openwebtext](https://huggingface.co/datasets/MiniLLM/openwebtext-processed), [roberta-corpus](https://huggingface.co/datasets/MiniLLM/roberta-corpus-processed).
 
 
 ### 2.2 Data Processing
@@ -59,18 +60,7 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 
 ## 3 Models
 ### 3.1 Resources
-+ The baselines and MiniLLM models based on GPT-2 can be downloaded from this:
-```bash
-wget -O gpt2.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/gpt2.tar
-```
-+ The baselines and MiniLLM models based on OPT can be downloaded from this:
-```bash
-wget -O opt.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/opt.tar
-```
-+ The baselines and MiniLLM models based on LLaMA can be downloaded from this:
-```bash
-wget -O llama.tar https://unilm.blob.core.windows.net/minillm/MiniLLM/llama.tar
-```
++ The pre-trained models (MiniLLM and the baselines) can be found in this [collection](https://huggingface.co/collections/MiniLLM/minillm-66f51b3d667b4ee25046dafd).
 
 #### Base Pre-trained Models
 To run fine-tuning or standard KD baselines, you need to download the model checkpoints from [Huggingface Model Hub] and put them in `checkpoints/`. For example, for gpt2-large, you can download the model from this [link](https://huggingface.co/gpt2-large/tree/main) and put them in `checkpoints/gpt2-large`.
