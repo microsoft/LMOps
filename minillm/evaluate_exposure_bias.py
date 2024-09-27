@@ -7,8 +7,6 @@ from transformers import (
 
 import os
 import random
-import nltk
-nltk.download("punkt")
 
 import torch
 import torch.nn.functional as F

@@ -2,8 +2,6 @@ from data_utils.prompt_datasets import PromptDataset
 from transformers import GenerationConfig, mpu
 
 import os
-import nltk
-nltk.download("punkt")
 
 import torch
 import torch.nn as nn
