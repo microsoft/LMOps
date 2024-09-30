@@ -2939,7 +2939,7 @@ class GenerationMixin:
                 next_token_scores = next_token_scores[:, mpu.get_model_parallel_rank()*partition_size:(mpu.get_model_parallel_rank()+1)*partition_size]
             else:
                 next_token_scores = logits_processor(input_ids, next_token_logits)
-                next_token_scores = logits_warper(input_ids, next_token_logits)
+                next_token_scores = logits_warper(input_ids, next_token_scores)
                 probs = nn.functional.softmax(next_token_scores.float(), dim=-1)
 
             # Store scores, attentions and hidden_states when required
