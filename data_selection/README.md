@@ -4,7 +4,7 @@
 
 <div>Theory Overview:</div>
 <img src="./figures/theory.png" width="70%"/>
-<div>Training Framwork: PDS</div>
+<div>Training Framwork PDS:</div>
 <img src="./figures/method.png" width="70%"/>
 
 ## Overview of the Training Framework
