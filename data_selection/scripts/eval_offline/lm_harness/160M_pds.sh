@@ -16,11 +16,11 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 # type
 TYPE="eval_harness"
 # model
-CKPT_NAME="470M-sgd100-160M-10k-lima-t0.1-r0.4"
-CKPT="${BASE_PATH}/results/pretrain/cc-sgd100-160M-10k-lima-t0.1-r0.4/mistral_470M/t100K-w2K-bs8-lr0.0003cosine3e-05-G4-N16-NN2-scr"
+CKPT_NAME="160M_pds"
+CKPT="${BASE_PATH}/results/pretrain/160M_pds"
 # data
 DATA_NAME="end_tasks"
-EVAL_DATA_NAMES="hellaswag,sciq,arc_easy,arc_challenge,boolq,logiqa,openbookqa,piqa,winogrande,lambada_openai,social_iqa,copa,storycloze_2018"
+EVAL_DATA_NAMES="hellaswag,sciq,arc_easy,arc_challenge,boolq,openbookqa,piqa,winogrande,lambada_openai"
 # hp
 EVAL_BATCH_SIZE=64
 # runtime
@@ -28,7 +28,7 @@ SAVE_PATH="${BASE_PATH}/results/${TYPE}"
 # seed
 SEED=10
 # wandb
-WANDB_NAME="470M-sgd100-160M-10k-lima-t0.1-r0.4"
+WANDB_NAME="160M_pds"
 
 
 OPTS=""
@@ -47,9 +47,6 @@ OPTS+=" --eval-data-names ${EVAL_DATA_NAMES}"
 # hp
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 # runtime
-OPTS+=" --eval-interval 5000"
-OPTS+=" --eval-start-ckpt 5000"
-OPTS+=" --eval-end-ckpt 100000"
 OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --wandb-group eval_harness"
 OPTS+=" --wandb-name ${WANDB_NAME}"

@@ -24,6 +24,17 @@ class LMHarnessEvaluator(BaseEvaluator):
             "dtype": "float" if self.args.fp32 else "half",
         }
 
+    def extract_results(self, results):
+        for k in results:
+            if "acc_norm,none" in results[k]:
+                results[k] = results[k]["acc_norm,none"]
+            elif "acc,none" in results[k]:
+                results[k] = results[k]["acc,none"]
+            else:
+                raise ValueError(f"Metric for {k} must contain acc_norm or acc")
+        results["avg"] = sum(results.values()) / len(results)
+        return results
+
     def _evaluate(self):
         self.print_and_save(f"Evaluating {self.model_path}")
         self.print_and_save(f"Results will be saved to {self.output_path}")
@@ -43,7 +54,7 @@ class LMHarnessEvaluator(BaseEvaluator):
         )
 
         if self.dp_rank == 0:
-            res = results["results"]
+            res = self.extract_results(results["results"])
             if wandb.run is not None:
                 wandb.log(res, step=self.global_steps)
             print_rank(json.dumps(res, indent=4))

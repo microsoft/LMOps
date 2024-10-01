@@ -17,7 +17,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 TYPE="eval_lm"
 # model
 CKPT_NAME="1.7B_bsl"
-CKPT="${BASE_PATH}/results/pretrain/cc/mistral_1.7B/t100K-w2K-bs8-lr0.0006cosine6e-05-G4-N16-NN2-scr"
+CKPT="${BASE_PATH}/results/pretrain/1.7B_bsl"
 # data
 DATA_NAME="dclm"
 # hp

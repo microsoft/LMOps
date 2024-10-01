@@ -16,8 +16,8 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 # type
 TYPE="eval_lm"
 # model
-CKPT_NAME="1.7B-sgd100-160M-10k-lima-t0.1-r0.4"
-CKPT="${BASE_PATH}/results/pretrain/cc-sgd100-160M-10k-lima-t0.1-r0.4/mistral_1.7B/t100K-w2K-bs8-lr0.0002cosine2e-05-G4-N16-NN2-scr"
+CKPT_NAME="1.7B_pds"
+CKPT="${BASE_PATH}/results/pretrain/1.7B_pds"
 # data
 DATA_NAME="dclm"
 # hp
@@ -27,7 +27,7 @@ SAVE_PATH="${BASE_PATH}/results/${TYPE}"
 # seed
 SEED=10
 # wandb
-WANDB_NAME="1.7B-sgd100-160M-10k-lima-t0.1-r0.4"
+WANDB_NAME="1.7B_pds"
 
 
 OPTS=""
