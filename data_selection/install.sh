@@ -1,14 +1,8 @@
 export NCCL_DEBUG=""
-# pip3 install transformers
-bash blob_yuxian.sh
-git submodule update --init
-cd transformers
-git checkout data_selection
-cd ..
-pip3 install -e transformers
+pip3 install git+https://github.com/t1101675/transformers.git@data_selection
+pip3 install git+https://github.com/EleutherAI/lm-evaluation-harness.git@15ffb0dafa9c869c7436ba9a3cf3067ac4c9d846
 pip3 install torch
 pip3 install deepspeed
-pip3 install nltk
 pip3 install numerize
 pip3 install torchtyping
 pip3 install rich

@@ -1,9 +1,0 @@
-[submodule "transformers"]
-	path = transformers
-	url = https://github.com/t1101675/transformers.git
-	branch = data_selection
-
-[submodule "lm_harness"]
-	path = lm_harness
-	url = https://github.com/t1101675/lm_harness.git
-	branch = data_selection

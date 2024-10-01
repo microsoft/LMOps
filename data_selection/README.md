@@ -2,9 +2,10 @@
 
 [paper]() | [huggingface]()
 
-![Theory](./figures/theory.png "Theory Overview")
-
-![Method](./figures/method.png "Training Framework")
+<div>Theory Overview:</div>
+<img src="./figures/theory.png" width="70%"/>
+<div>Training Framwork: PDS</div>
+<img src="./figures/method.png" width="70%"/>
 
 ## Overview of the Training Framework
 1. Solve data quality scores based on a small model (160M), small total steps (100), SGD, and small proxy data (163,840 samples).
@@ -13,10 +14,15 @@
 4. Filter CC with the scores.
 5. Pre-train the model.
 
+## Selected Data and Pre-Trained Models
+TODO
+
 ## Details of the Pipeline & How to run
 The following pipeline can also be found in `scripts/pipeline.sh`.
 ### 0. Environment
 ```bash
+conda create -n data_selection python=3.10
+conda activate data_selection
 bash install.sh
 export BASE_PATH=/PATH/TO/THIS/PROJECT
 # or export BASE_PATH=$PWD
@@ -77,13 +83,13 @@ bash $BASE_PATH/scripts/tools/select_pretrain_data.sh $BASE_PATH
 ### 7. Pre-train the model
 ```bash
 # bash $BASE_PATH/scripts/pretrain/160M_bsl.sh $BASE_PATH # already pre-trained
-bash $BASE_PATH/scripts/pretrain/160M_selected_data.sh $BASE_PATH
+bash $BASE_PATH/scripts/pretrain/160M_pds.sh $BASE_PATH
 bash $BASE_PATH/scripts/pretrain/470M_bsl.sh $BASE_PATH
-bash $BASE_PATH/scripts/pretrain/470M_selected_data.sh $BASE_PATH
+bash $BASE_PATH/scripts/pretrain/470M_pds.sh $BASE_PATH
 bash $BASE_PATH/scripts/pretrain/1B_bsl.sh $BASE_PATH
-bash $BASE_PATH/scripts/pretrain/1B_selected_data.sh $BASE_PATH
+bash $BASE_PATH/scripts/pretrain/1B_pds.sh $BASE_PATH
 bash $BASE_PATH/scripts/pretrain/1.7B_bsl.sh $BASE_PATH
-bash $BASE_PATH/scripts/pretrain/1.7B_selected_data.sh $BASE_PATH
+bash $BASE_PATH/scripts/pretrain/1.7B_pds.sh $BASE_PATH
 ```
 
 ### 8. Evaluate the models
@@ -98,8 +104,8 @@ for model_size in 160M 470M 1B 1.7B
 do
 bash $BASE_PATH/scripts/eval_offline/lm_harness/${model_size}_bsl.sh $BASE_PATH
 bash $BASE_PATH/scripts/eval_offline/lm/${model_size}_bsl.sh $BASE_PATH
-bash $BASE_PATH/scripts/eval_offline/lm_harness/${model_size}_selected_data.sh $BASE_PATH
-bash $BASE_PATH/scripts/eval_offline/lm/${model_size}_selected_data.sh $BASE_PATH
+bash $BASE_PATH/scripts/eval_offline/lm_harness/${model_size}_pds.sh $BASE_PATH
+bash $BASE_PATH/scripts/eval_offline/lm/${model_size}_pds.sh $BASE_PATH
 done
 ```
 

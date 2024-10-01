@@ -14,13 +14,12 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_port $MASTER_PORT"
 
 # type
-TYPE="eval_harness"
+TYPE="eval_lm"
 # model
-CKPT_NAME="1.7B-sgd100-160M-10k-lima-t0.1-r0.4"
-CKPT="${BASE_PATH}/results/pretrain/cc-sgd100-160M-10k-lima-t0.1-r0.4/mistral_1.7B/t100K-w2K-bs8-lr0.0002cosine2e-05-G4-N16-NN2-scr"
+CKPT_NAME="160M_pds"
+CKPT="${BASE_PATH}/results/pretrain/160M_pds"
 # data
-DATA_NAME="end_tasks"
-EVAL_DATA_NAMES="hellaswag,sciq,arc_easy,arc_challenge,boolq,logiqa,openbookqa,piqa,winogrande,lambada_openai,social_iqa,copa,storycloze_2018"
+DATA_NAME="dclm"
 # hp
 EVAL_BATCH_SIZE=64
 # runtime
@@ -28,7 +27,7 @@ SAVE_PATH="${BASE_PATH}/results/${TYPE}"
 # seed
 SEED=10
 # wandb
-WANDB_NAME="1.7B-sgd100-160M-10k-lima-t0.1-r0.4"
+WANDB_NAME="160M_pds"
 
 
 OPTS=""
@@ -42,8 +41,10 @@ OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
 OPTS+=" --n-nodes ${NNODES}"
 # data
+OPTS+=" --data-dir ${BASE_PATH}/processed_data/dclm/mistral-1025"
 OPTS+=" --data-name ${DATA_NAME}"
-OPTS+=" --eval-data-names ${EVAL_DATA_NAMES}"
+OPTS+=" --data-split test"
+OPTS+=" --bin-data"
 # hp
 OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 # runtime
