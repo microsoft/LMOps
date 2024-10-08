@@ -14,8 +14,8 @@ DISTRIBUTED_ARGS="--num_gpus $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"/home/MiniLLM"}
-CKPT="${BASE_PATH}/results/data_scorer/cc-sgd100-160M-10k-lima-163840/fairseq_125M/e5-w10-bs16-lr0.0001cosine1e-07-G2-N16-NN2/mean-bias-linear/best"
-CKPT_NAME="cc-sgd100-160M-10k-lima"
+CKPT="${BASE_PATH}/results/data_scorer/"
+CKPT_NAME="cc-160M-lima"
 # data
 DATA_DIR="${BASE_PATH}/processed_data/data_scorer_infer/cc/mistral-fairseq-1024"
 # hp
