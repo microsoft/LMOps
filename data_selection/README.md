@@ -1,6 +1,6 @@
 # Data Selection via Optimal Control
 
-[paper]() | [huggingface]()
+[paper](https://arxiv.org/abs/2410.07064) | [huggingface](https://huggingface.co/Data-Selection)
 
 <div>Theory Overview:</div>
 <img src="./figures/theory.png" width="70%"/>
@@ -109,6 +109,10 @@ bash $BASE_PATH/scripts/eval_offline/lm/${model_size}_pds.sh $BASE_PATH
 done
 ```
 
-
 ## 9 Citation
-TODO
+@article{gu2024data,
+  title={Data Selection via Optimal Control for Language Models},
+  author={Gu, Yuxian and Dong, Li and Wang, Hongning and Hao, Yaru and Dong, Qingxiu and Wei, Furu and Huang, Minlie},
+  journal={arXiv preprint arXiv:2410.07064},
+  year={2024}
+}

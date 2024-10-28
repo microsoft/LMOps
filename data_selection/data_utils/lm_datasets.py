@@ -1,14 +1,4 @@
-import random
 import torch
-import os
-from torch.utils.data import Dataset
-from .distributed_indexed import DistributedMMapIndexedDataset
-
-from torch.distributed import get_rank, get_world_size
-from utils import print_rank
-from tqdm import tqdm
-import json
-import numpy as np
 from .base_datasets import BaseDataset
 
 
@@ -27,10 +17,6 @@ class LMDataset(BaseDataset):
             index = int(self.order[self.epoch, index])
 
         data = self.data[index].astype(int)
-        
-        if self.args.remove_bos_in_training:
-            assert data[0] == self.tokenizer.bos_token_id
-            data = data[1:]
     
         return index, data
 
