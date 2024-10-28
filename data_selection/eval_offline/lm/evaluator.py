@@ -1,10 +1,7 @@
 import os
-import torch
-import json
 import time
-import datasets
 
-from utils import print_rank, save_rank, get_tokenizer, BOS_MODELS
+from utils import save_rank, get_tokenizer
 from train_eval_utils.base_evaluator import BaseEvaluator
 from pretrain.trainer import PreTrainer
 

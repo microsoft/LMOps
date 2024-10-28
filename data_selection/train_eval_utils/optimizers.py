@@ -1,5 +1,4 @@
 import torch
-from utils import print_rank
     
 
 class ToyLARSOptimizer(torch.optim.Optimizer):

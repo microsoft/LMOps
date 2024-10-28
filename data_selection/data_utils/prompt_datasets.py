@@ -1,13 +1,4 @@
-import random
 import torch
-import os
-from torch.utils.data import Dataset
-from .distributed_indexed import DistributedMMapIndexedDataset
-
-from torch.distributed import get_rank, get_world_size
-from utils import print_rank
-from tqdm import tqdm
-import json
 import numpy as np
 from .base_datasets import BaseDataset
 
@@ -49,10 +40,6 @@ class PromptDataset(BaseDataset):
 
         assert len(prompt_ids) + len(response_ids) <= self.args.max_length + 1, \
             f"Prompt and response too long: {len(prompt_ids)} + {len(response_ids)} > {self.args.max_length + 1}"        
-
-        if self.args.remove_bos_in_training:
-            assert prompt_ids[0] == self.tokenizer.bos_token_id
-            prompt_ids = prompt_ids[1:]
 
         return index, prompt_ids, response_ids
 

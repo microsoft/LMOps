@@ -1,11 +1,8 @@
 import os
-import re
 import wandb
-from collections import defaultdict
 from train_eval_utils.base_trainer import BaseTrainer
 from utils import print_rank, save_rank
 from torch.distributed import get_rank
-from data_utils.prompt_datasets import PromptDataset
 from data_utils.lm_datasets import LMDataset
 
 
@@ -26,16 +23,11 @@ class PreTrainer(BaseTrainer):
         data_split = args.data_split or "data"
         if do_train:
             if args.dev_data_dir is None or os.path.samefile(args.dev_data_dir, args.data_dir):
-                print_rank("### Spliting dev data from training data ###")
-                args.dev_data_dir = args.data_dir
-                min_train_offset = 100000
-                assert 0 == 1, "dangerous!"
+                raise ValueError("dev_data_dir should be different from data_dir")
             else:
                 min_train_offset = 0
             self.train_dataset = LMDataset(args, self.tokenizer, data_split, args.data_dir, args.train_num, data_name="lm", min_offset=min_train_offset+self.args.min_offset, min_state=self.args.min_state)
             self.print_and_save(f"### Training Data Number: {len(self.train_dataset)}")
-            # self.train_dataset = LMDataset(args, self.tokenizer, "data", args.data_dir, args.dev_num, max_offset=10000)
-            # print_rank("train num", len(self.train_dataset))
             self.eval_dataset = LMDataset(args, self.tokenizer, data_split, args.dev_data_dir, args.dev_num, data_name="lm_dev", max_offset=100000)
             self.print_and_save(f"### Dev Data Number: {len(self.eval_dataset)}")
         else:

@@ -19,9 +19,6 @@ from itertools import accumulate
 import numpy as np
 import torch
 
-from utils import naive_copy_to_blob
-
-
 def best_fitting_dtype(vocab_size=None):
     if vocab_size is not None and vocab_size < 65500:
         return np.uint16
@@ -167,10 +164,6 @@ class ChunkedDatasetBuilder():
                 self.builder.finalize(self.idx_file)
             self._chunks = []
 
-            if self.tmp_output_path is not None:
-                naive_copy_to_blob(self.base_path, self.tmp_bin_file, self.bin_file.replace(self.base_path, ""), rm_source=True)
-                naive_copy_to_blob(self.base_path, self.tmp_idx_file, self.idx_file.replace(self.base_path, ""), rm_source=True)
-
             self.ofid += 1
             self.bin_file = os.path.join(self.output_path, f"{self.split}_{self.ofid}.bin")
             self.idx_file = os.path.join(self.output_path, f"{self.split}_{self.ofid}.idx")
@@ -195,9 +188,6 @@ class ChunkedDatasetBuilder():
             else:
                 self.builder.finalize(self.idx_file)
             self._chunks = []
-        if self.tmp_output_path is not None:
-            naive_copy_to_blob(self.base_path, self.tmp_bin_file, self.bin_file.replace(self.base_path, ""), rm_source=True)
-            naive_copy_to_blob(self.base_path, self.tmp_idx_file, self.idx_file.replace(self.base_path, ""), rm_source=True)
 
 
 class IndexedDataset(torch.utils.data.Dataset):

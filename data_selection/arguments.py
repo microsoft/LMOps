@@ -16,7 +16,6 @@
 import argparse
 import os
 import deepspeed
-import numpy as np
 from numerize.numerize import numerize
 
 
@@ -94,8 +93,6 @@ def add_data_args(parser: argparse.ArgumentParser):
     group.add_argument("--test-data-dir", type=str, default=None)
     group.add_argument("--proxy-data-dir", type=str, default=None)
     group.add_argument("--processed-data-dir", type=str, default=None)
-    group.add_argument("--force-process", action="store_true")
-    group.add_argument("--force-process-demo", action="store_true")
     group.add_argument("--data-process-workers", type=int, default=-1)
     group.add_argument("--precompute-data-order", action="store_true")
     group.add_argument("--train-num", type=int, default=None)
@@ -107,7 +104,6 @@ def add_data_args(parser: argparse.ArgumentParser):
     group.add_argument("--gen-num", type=int, default=None)
     group.add_argument("--infer-num", type=int, default=None)
     group.add_argument("--data-name", type=str, default=None)
-    group.add_argument("--prompt-type", type=str, default=None)
     group.add_argument("--num-workers", type=int, default=1)
     group.add_argument("--max-prompt-length", type=int, default=512)
     group.add_argument("--min-prompt-length", type=int, default=128)
@@ -120,17 +116,15 @@ def add_data_args(parser: argparse.ArgumentParser):
     group.add_argument("--min-offset", type=int, default=0)
     group.add_argument("--data-split", type=str, default=None)
     group.add_argument("--no-shuffle", action="store_true")
+    group.add_argument("--trunc-data", action="store_true")
     
     group.add_argument("--prompt-data-dir", type=str)
     group.add_argument("--lm-data-dir", type=str)
     group.add_argument("--eval-ppl", action="store_true")
     group.add_argument("--eval-gen", action="store_true")
     
-    group.add_argument("--only-prompt", action="store_true")
     group.add_argument("--prompt-data-full-loss", action="store_true",
                        help="Compute loss on the entire sentence in prompt data type.")
-    group.add_argument("--remove-bos-in-training", action="store_true",
-                       help="Remove bos token during training. This ensures the first token is bos token.")
     group.add_argument("--chunk-num-per-shard", type=int, default=None)
     group.add_argument("--max-shard-num", type=int, default=10000000)
     group.add_argument("--max-sample-num", type=int, default=None)
@@ -214,7 +208,6 @@ def add_pmp_solver_args(parser: argparse.ArgumentParser):
     group.add_argument("--dev-grad-batch-size", type=int, default=None)
     
     group.add_argument("--compute-ct-interval", type=int, default=1)
-    group.add_argument("--trunc-data", action="store_true")
     
     group.add_argument("--dataset-type", type=str, default="lm")
     

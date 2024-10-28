@@ -3,7 +3,6 @@ import sys
 import json
 import torch
 import random
-import shutil
 from time import time
 from tqdm import tqdm
 from numerize.numerize import numerize
@@ -11,7 +10,7 @@ from numerize.numerize import numerize
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
 import matplotlib.pyplot as plt
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import spearmanr
 from sklearn.metrics import f1_score, accuracy_score
 
 from utils import print_rank, all_gather
