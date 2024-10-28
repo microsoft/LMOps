@@ -3,8 +3,11 @@
 [paper](https://arxiv.org/abs/2410.07064) | [huggingface](https://huggingface.co/Data-Selection)
 
 <div>Theory Overview:</div>
+
 <img src="./figures/theory.png" width="70%"/>
+<br>
 <div>Training Framwork PDS:</div>
+
 <img src="./figures/method.png" width="70%"/>
 
 ## Overview of the Training Framework
@@ -14,7 +17,11 @@
 4. Filter CC with the scores.
 5. Pre-train the model.
 
-## Selected Data and Pre-Trained Models
+## Pre-Trained Models
++ [Models](https://huggingface.co/collections/Data-Selection/baseline-models-670550972a59015f6c8870ab) Trained on Redpajama CC (Conventional Pre-Training, Baselines)
++ [Models](https://huggingface.co/collections/Data-Selection/pds-models-6705504096a78d10a30837c0) Trained PDS-Selected Data
+
+## Selected Data
 TODO
 
 ## Details of the Pipeline & How to run
