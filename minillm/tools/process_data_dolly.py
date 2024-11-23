@@ -4,9 +4,8 @@ import time
 import torch
 import json
 import sys
-from numerize.numerize import numerize
 import numpy as np
-from data_utils.indexed_dataset import make_builder
+from data_utils.indexed_dataset import make_builder, best_fitting_dtype
 from transformers import AutoTokenizer
 from arguments import get_args
 
@@ -22,7 +21,7 @@ class Encoder(object):
     def encode(self, line):
         line = json.loads(line)
         if "input" not in line or len(line["input"]) == 0:
-            if self.args.model_type!="qwen":
+            if self.args.model_type not in ["qwen2"]:
                 template = (
                     "Below is an instruction that describes a task. "
                     "Write a response that appropriately completes the request.\n\n"
@@ -36,7 +35,7 @@ class Encoder(object):
                 )
             prompt = template.format(instruction=line["instruction"])
         else:
-            if self.args.model_type!="qwen":
+            if self.args.model_type not in ["qwen2"]:
                 template = (
                     "Below is an instruction that describes a task, paired with an input that provides further context. "
                     "Write a response that appropriately completes the request.\n\n"
@@ -82,6 +81,10 @@ def main():
             "train": raw_data
         }
     
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    dtype = best_fitting_dtype(len(tokenizer))
+    split_id = np.iinfo(dtype).max
+    print("dtype:", dtype, "split_id:", split_id)
     for split in all_data:
         
         # encoder use the tokenizer to encode data
@@ -96,10 +99,7 @@ def main():
         bin_file = os.path.join(args.processed_data_dir, f"{split}_{0}.bin")
         idx_file = os.path.join(args.processed_data_dir, f"{split}_{0}.idx")
 
-        if args.model_type!="qwen":
-            binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint16)
-        else:
-            binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint32)
+        binary_builder = make_builder(bin_file, impl="mmap", dtype=dtype)
 
         # put tokenized data into binary_builder
         inst_num = 0
@@ -121,7 +121,7 @@ def main():
                 else:
                     continue
             else:
-                binary_builder.add_item(torch.IntTensor(prompt + [-1] + response))
+                binary_builder.add_item(torch.IntTensor(prompt + [split_id] + response))
 
             json_file.write(json.dumps({
                 "instruction": line["instruction"],

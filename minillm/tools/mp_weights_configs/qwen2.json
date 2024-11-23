@@ -1,0 +1,26 @@
+{
+    "column_weight": [
+        "lm_head.weight",
+        "embed_tokens.weight",
+        "mlp.gate_proj.weight",
+        "mlp.up_proj.weight",
+        "k_proj.weight",
+        "q_proj.weight",
+        "v_proj.weight"
+    ],
+    "row_weight": [
+        "mlp.down_proj.weight",
+        "o_proj.weight"
+    ],
+    "column_bias": [
+        "k_proj.bias",
+        "q_proj.bias",
+        "v_proj.bias"
+    ],
+    "no_mp_weights": [
+        "input_layernorm.weight",
+        "post_attention_layernorm.weight",
+        "norm.weight",
+        "rotary_emb.inv_freq"
+    ]
+}

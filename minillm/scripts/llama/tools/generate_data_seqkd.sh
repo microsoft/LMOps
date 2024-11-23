@@ -51,7 +51,7 @@ OPTS+=" --seed-ppo 42"
 OPTS+=" --seed 10"
 # deepspeed
 OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero1_fp16.json"
 OPTS+=" --type gen"
 # gen
 OPTS+=" --do-sample"

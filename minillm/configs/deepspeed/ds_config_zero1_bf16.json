@@ -5,8 +5,8 @@
         "stage": 1
     },
     "zero_allow_untested_optimizer": true,
-    "fp16": {
-        "enabled": false
+    "bf16": {
+        "enabled": true
     },
     "wall_clock_breakdown": false
 }

@@ -49,10 +49,7 @@ def get_teacher_model(args, device):
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            if args.model_type=="qwen":
-                model = AutoModelForCausalLM.from_config(config).to(torch.bfloat16)
-            else:
-                model = AutoModelForCausalLM.from_config(config).half()
+            model = AutoModelForCausalLM.from_config(config).to(eval(args.dtype))
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:
@@ -61,7 +58,7 @@ def get_teacher_model(args, device):
             args.teacher_model_path, 
             config=config, 
             device_map={"": device}, 
-            torch_dtype=torch.float16 if args.model_type!="qwen" else torch.bfloat16
+            torch_dtype=eval(args.dtype)
         )
 
         if args.peft is not None and args.teacher_peft_path is not None:
@@ -130,11 +127,7 @@ def setup_model_and_optimizer(args, ds_config, device, set_optim=True):
         lr_scheduler = get_learning_rate_scheduler(args, optimizer)
     else:
         optimizer, lr_scheduler = None, None
-        
-    if args.model_type=="qwen" and ds_config['fp16']['enabled']==True:
-        import copy
-        ds_config['bf16']=copy.deepcopy(ds_config['fp16'])
-        ds_config['fp16']['enabled']=False
+
     model, optimizer, _, lr_scheduler = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
@@ -508,7 +501,12 @@ def main():
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
     
-    args.fp32 = not ds_config["fp16"]["enabled"]    
+    if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
+        args.dtype = "torch.float16"
+    elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
+        args.dtype = "torch.bfloat16"
+    else:
+        args.dtype = "torch.float32"
     args.deepspeed_config = None
     
     # get the tokenizer

@@ -29,11 +29,7 @@ def setup_model(args, ds_config, device):
     # get the optimizer and lr_scheduler
 
     optimizer, lr_scheduler = None, None
-        
-    if args.model_type=="qwen" and ds_config['fp16']['enabled']==True:
-        import copy
-        ds_config['bf16']=copy.deepcopy(ds_config['fp16'])
-        ds_config['fp16']['enabled']=False
+
     model, _, _, _ = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
@@ -74,7 +70,12 @@ def main():
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
 
-    args.fp32 = not ds_config["fp16"]["enabled"] 
+    if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
+        args.dtype = "torch.float16"
+    elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
+        args.dtype = "torch.bfloat16"
+    else:
+        args.dtype = "torch.float32"
     args.deepspeed_config = None
 
     # get the tokenizer

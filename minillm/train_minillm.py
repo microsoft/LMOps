@@ -21,10 +21,7 @@ def get_teacher_model(args, device):
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            if args.model_type=="qwen":
-                model = AutoModelForCausalLM.from_config(config).to(torch.bfloat16)
-            else:
-                model = AutoModelForCausalLM.from_config(config).half()
+            model = AutoModelForCausalLM.from_config(config).to(eval(args.dtype))
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:
@@ -33,7 +30,7 @@ def get_teacher_model(args, device):
             args.teacher_model_path, 
             config=config, 
             device_map={"": device}, 
-            torch_dtype=torch.float16 if args.model_type!="qwen" else torch.bfloat16
+            torch_dtype=eval(args.dtype)
         )
 
         if args.peft is not None:
@@ -73,7 +70,12 @@ def main():
     ds_config["gradient_clipping"] = args.clip_grad
     ds_config["steps_per_print"] = 10000000
     
-    args.fp32 = not ds_config["fp16"]["enabled"]
+    if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
+        args.dtype = "torch.float16"
+    elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
+        args.dtype = "torch.bfloat16"
+    else:
+        args.dtype = "torch.float32"
     args.deepspeed_config = None
     
     if args.teacher_model_type is None:
