@@ -33,7 +33,7 @@ from utils import print_rank, get_rank
 from utils import save_rank
 from utils import all_gather
 from utils import load_parallel, save_parallel
-from utils import get_tokenizer, get_model, parallel_model_map
+from utils import get_tokenizer, get_model
 
 from accelerate import init_empty_weights
 
@@ -49,10 +49,7 @@ def get_teacher_model(args, device):
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            if args.model_type=="qwen":
-                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
-            else:
-                model = parallel_model_map[args.model_type](config).half()
+            model = AutoModelForCausalLM.from_config(config).to(eval(args.dtype))
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:
@@ -61,7 +58,7 @@ def get_teacher_model(args, device):
             args.teacher_model_path, 
             config=config, 
             device_map={"": device}, 
-            torch_dtype=torch.float16 if args.model_type!="qwen" else torch.bfloat16
+            torch_dtype=eval(args.dtype)
         )
 
         if args.peft is not None and args.teacher_peft_path is not None:
@@ -130,11 +127,7 @@ def setup_model_and_optimizer(args, ds_config, device, set_optim=True):
         lr_scheduler = get_learning_rate_scheduler(args, optimizer)
     else:
         optimizer, lr_scheduler = None, None
-        
-    if args.model_type=="qwen" and ds_config['fp16']['enabled']==True:
-        import copy
-        ds_config['bf16']=copy.deepcopy(ds_config['fp16'])
-        ds_config['fp16']['enabled']=False
+
     model, optimizer, _, lr_scheduler = deepspeed.initialize(
         model=model,
         optimizer=optimizer,
@@ -338,7 +331,11 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                 if args.model_parallel:
                     if dist.get_rank() == 0:
                         os.makedirs(save_dir_path, exist_ok=True)
-                        model.module.config.to_json_file(os.path.join(save_dir_path, "config.json"))
+                        config_dict = model.module.config.to_dict()
+                        if "is_model_parallel" in config_dict:
+                            del config_dict["is_model_parallel"]
+                        with open(os.path.join(save_dir_path, "config.json"), "w") as f:
+                            json.dump(config_dict, f, indent=2)
                         tokenizer.save_pretrained(save_dir_path)
                     if mpu.get_data_parallel_rank() == 0:
                         save_parallel(model.module, save_dir_path)
@@ -504,7 +501,12 @@ def main():
     if not args.do_train:
         ds_config["zero_optimization"]["stage"] = 0
     
-    args.fp32 = not ds_config["fp16"]["enabled"]    
+    if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
+        args.dtype = "torch.float16"
+    elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
+        args.dtype = "torch.bfloat16"
+    else:
+        args.dtype = "torch.float32"
     args.deepspeed_config = None
     
     # get the tokenizer

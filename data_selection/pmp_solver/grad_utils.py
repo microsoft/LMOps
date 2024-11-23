@@ -1,4 +1,4 @@
-from torch.func import grad, jvp, vmap, grad_and_value
+from torch.func import grad, jvp, vmap
 from .model_wrapper import TransformerWrapper
 
 

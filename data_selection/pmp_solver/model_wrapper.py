@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.func import functional_call
-from utils import print_rank
 
 
 class TransformerWrapper(nn.Module):

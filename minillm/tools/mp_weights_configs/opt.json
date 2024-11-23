@@ -1,0 +1,29 @@
+{
+    "column_weight" :[
+        "embed_tokens.weight",
+        "fc1.weight",
+        "lm_head.weight",
+        "q_proj.weight",
+        "k_proj.weight",
+        "v_proj.weight"
+    ],
+    "row_weight": [
+        "out_proj.weight",
+        "fc2.weight"
+    ],
+    "column_bias": [
+        "q_proj.bias",
+        "k_proj.bias",
+        "v_proj.bias",
+        "fc1.bias"
+    ],
+    "no_mp_weights": [
+        "embed_positions.weight",
+        "out_proj.bias",
+        "fc2.bias",
+        "self_attn_layer_norm.weight",
+        "self_attn_layer_norm.bias",
+        "final_layer_norm.weight",
+        "final_layer_norm.bias"
+    ]
+}

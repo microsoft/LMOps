@@ -203,39 +203,3 @@ def save_parallel(model, save_dir):
     checkpoint_name = os.path.join(save_dir, f"mp{mpu.get_model_parallel_world_size()}", f"pytorch_model_{mp_rank}.bin")
     torch.save(model.state_dict(), checkpoint_name)
     print(f"Rank {get_rank()}: {checkpoint_name} saved.")
-    
-    
-def copy_to_blob(base_path, source_dir, target_dir, rm_source=False):
-    target_dir = target_dir.strip("/")
-    with open(os.path.join(base_path, "downstream_data", "sas_token"), "r") as f:
-        sas_token = f.read().strip()
-    cmd = f"{base_path}/azcopy copy {source_dir} --recursive=true \"https://msranlpintern.blob.core.windows.net/yuxian/sps/{target_dir}{sas_token}\""
-    print(cmd)
-    os.system(cmd)
-    if rm_source:
-        print(f"rm -rf {source_dir}")
-        os.system(f"rm -rf {source_dir}")
-
-
-def copy_from_blob(base_path, source_dir, target_dir, rm_source=False):
-    source_dir = source_dir.strip("/")
-    with open(os.path.join(base_path, "downstream_data", "sas_token"), "r") as f:
-        sas_token = f.read().strip()
-    cmd = f"{base_path}/azcopy copy --recursive=true \"https://msranlpintern.blob.core.windows.net/yuxian/sps/{source_dir}{sas_token}\" {target_dir}"
-    print(cmd)
-    os.system(cmd)
-
-
-def naive_copy_to_blob(base_path, source_dir, target_dir, rm_source=False):
-    cmd = f"cp -r {source_dir} {base_path}/{target_dir}"
-    print(cmd)
-    os.system(cmd)
-    if rm_source:
-        print(f"rm -rf {source_dir}")
-        os.system(f"rm -rf {source_dir}")
-
-
-def remove_path(path):
-    print("Remove", path)
-    if os.path.exists(path):
-        os.system(f"rm -rf {path}")

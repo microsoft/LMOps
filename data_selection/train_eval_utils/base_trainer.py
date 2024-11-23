@@ -1,5 +1,4 @@
 import os
-import re
 import uuid
 import json
 import math
@@ -13,9 +12,7 @@ from collections import defaultdict
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.distributed as dist
-from torch.distributed import get_rank
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.optim import AdamW, SGD, Adam
 from data_utils.prompt_datasets import PromptDataset

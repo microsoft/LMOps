@@ -1,25 +1,21 @@
 import os
 import math
-import random
 import numpy as np
 from tqdm import tqdm
 from time import time
 
 import torch
 import torch.distributed as dist
-import torch.multiprocessing as mp
 from torch.utils.data import DataLoader, DistributedSampler
-from torch.func import grad, jvp, vmap, grad_and_value
+from torch.func import grad_and_value
 
-from transformers import AutoConfig, AutoModelForCausalLM
-
-from utils import all_gather, print_rank, save_rank, get_model
+from utils import all_gather, print_rank, get_model
 from train_eval_utils import BaseTrainer
 from data_utils import PromptDataset, LMDataset
 
 from .model_wrapper import TransformerWrapper
 from .checkpointing import Checkpointing
-from .grad_utils import jvp_single, jvp_batch, hvp_fwdrev
+from .grad_utils import jvp_batch, hvp_fwdrev
 
 
 class GammaTrainer(BaseTrainer):
