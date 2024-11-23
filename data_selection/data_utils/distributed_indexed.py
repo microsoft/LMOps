@@ -16,8 +16,6 @@
 import os
 import struct
 
-from itertools import accumulate
-
 import numpy as np
 import torch
 import torch.distributed as dist

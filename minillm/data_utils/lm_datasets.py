@@ -7,15 +7,16 @@ import numpy as np
 from torch.utils.data import Dataset
 from .distributed_indexed import DistributedMMapIndexedDataset
 
-from torch.distributed import get_rank, get_world_size, barrier
+from torch.distributed import get_rank, get_world_size
 from utils import print_rank
-from utils import save_rank
+from .indexed_dataset import best_fitting_dtype
 
 
 class LMTrainDataset(Dataset):
     def __init__(self, args, tokenizer, path, split, num, ratio, rng_sample: random.Random):
         self.args = args
         self.tokenizer = tokenizer
+        self.split_id = np.iinfo(best_fitting_dtype(len(tokenizer))).max
         self.split = split
         self.pad_id = self.tokenizer.eos_token_id
         self.ratio = ratio
@@ -55,14 +56,9 @@ class LMTrainDataset(Dataset):
         source_len = 1
         
         prompt = None
-        if 65535 in input_ids:
-            source_len = np.where(input_ids==65535)[0][0]
-            prompt = input_ids[:source_len] #for uint16 (others)
-            input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
-        elif 4294967295 in input_ids: #for uint32 (qwen, gemma, and etc)
-            source_len = np.where(input_ids==4294967295)[0][0]
-            prompt = input_ids[:source_len]
-            input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
+        source_len = np.where(input_ids==self.split_id)[0][0]
+        prompt = input_ids[:source_len] #for uint16 (others)
+        input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
         input_ids = input_ids[:self.max_length]
         input_len = len(input_ids)
         model_data["input_ids"][i][:input_len-1] = torch.tensor(input_ids[:-1], dtype=torch.long)

@@ -17,24 +17,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     AutoConfig,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,
-    ParallelMistralForCausalLM,
-    ParallelQWenLMHeadModel,
     mpu,)
-
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM,
-    "llama2": ParallelLlamaForCausalLM,
-    "mistral": ParallelMistralForCausalLM,
-    "qwen": ParallelQWenLMHeadModel,
-}
 
 
 # Logging
@@ -139,13 +122,11 @@ def get_model(args, device):
     config = AutoConfig.from_pretrained(args.model_path)
     
     st_time = time.time()
+    dtype = eval(args.dtype)
     if args.model_parallel:
         config.is_model_parallel = True
         with init_empty_weights():
-            if args.model_type=="qwen":
-                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
-            else:
-                model = parallel_model_map[args.model_type](config).half()
+            model = AutoModelForCausalLM.from_config(config).to(dtype)
         load_parallel(model, args.model_path)
 
         if mpu.get_data_parallel_rank() == 0:
@@ -154,10 +135,6 @@ def get_model(args, device):
                 sum([p.nelement() for p in model.parameters()])), flush=True)
     else:
         config.is_model_parallel = False
-        if args.model_type=="qwen":
-            dtype = torch.float32 if args.fp32 else torch.float16
-        else:
-            dtype = torch.float32 if args.fp32 else torch.bfloat16
         model = AutoModelForCausalLM.from_pretrained(args.model_path, config=config, device_map={"": device}, torch_dtype=dtype)
 
         if args.peft is not None:
@@ -215,11 +192,7 @@ def get_optimizer_params_peft(args, model: nn.Module):
 
 def get_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    if args.model_type in ["gpt2", "opt", "llama", "gptj", "llama2", "mistral"]:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-    elif args.model_type=="qwen":
-        tokenizer.pad_token_id = 151646
-        tokenizer.eos_token_id = 151643
+    if args.model_type in ["gpt2", "opt", "llama", "gptj", "llama2", "mistral", "qwen2"]:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
     return tokenizer

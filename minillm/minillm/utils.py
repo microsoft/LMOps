@@ -7,17 +7,9 @@ import torch
 import torch.nn.functional as F
 import torch.distributed as dist
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR
-from accelerate import init_empty_weights
 
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoConfig,
-    mpu,
-    ParallelOPTForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,
-    ParallelLlamaForCausalLM)
+from transformers import mpu
 
 
 def get_entropy(gen_logits, inf_mask, mask, model_parallel=False):

@@ -20,7 +20,29 @@ import numpy as np
 import torch
 
 
-def __best_fitting_dtype(vocab_size=None):
+# Copyright (c) Facebook, Inc. and its affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+
+# copied from fairseq/fairseq/data/indexed_dataset.py
+# Removed IndexedRawTextDataset since it relied on Fairseq dictionary
+# other slight modifications to remove fairseq dependencies
+# Added document index to index file and made it accessible.
+#    An empty sentence no longer separates documents.
+
+from functools import lru_cache
+import os
+import shutil
+import struct
+from itertools import accumulate
+
+import numpy as np
+import torch
+
+
+def best_fitting_dtype(vocab_size=None):
     if vocab_size is not None and vocab_size < 65500:
         return np.uint16
     else:
