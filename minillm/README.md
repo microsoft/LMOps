@@ -28,8 +28,6 @@ or
 bash install.sh
 ```
 
-Our code is based in [this commit](https://github.com/huggingface/transformers/commit/85fde09c97213bf7e8625f83096bb2a9e183f987) of HuggingFace Transformers.
-
 Our data and pre-trained models are uploaded to our HuggingFace [repo](https://huggingface.co/MiniLLM).
 
 ## 2 Data
