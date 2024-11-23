@@ -8,6 +8,7 @@ from transformers import mpu
 import torch.distributed as dist
 
 from data_utils.distributed_indexed import DistributedMMapIndexedDataset
+from data_utils.indexed_dataset import best_fitting_dtype
 from torch.distributed import get_rank, get_world_size
 from utils import print_rank
 
@@ -16,7 +17,7 @@ class PPOPipeline():
     def __init__(self, args, tokenizer, split, ppo_data_path=None, fix_prompts=False, num=-1):
         super().__init__()
         self.tokenizer = tokenizer
-
+        self.split_id = np.iinfo(best_fitting_dtype(len(tokenizer))).max
         self.args = args
         self.tokenizer = tokenizer
         self.split = split
@@ -46,8 +47,8 @@ class PPOPipeline():
         
         assert len(data) <= self.max_prompt_length
         
-        if self.args.model_type!="qwen" and 65535 in data:
-            source_len = np.where(data==65535)[0][0]
+        if self.split_id in data:
+            source_len = np.where(data==self.split_id)[0][0]
             prompt = data[:source_len]
             response = data[source_len+1:]
         else:
@@ -111,7 +112,8 @@ class LMPipeline():
     def __init__(self, args, tokenizer, split, lm_data_path=None, num=-1):
         super().__init__()
         self.tokenizer = tokenizer
-
+        self.split_id = np.iinfo(best_fitting_dtype(len(tokenizer))).max
+        
         self.args = args
         self.tokenizer = tokenizer
         self.split = split
@@ -140,8 +142,8 @@ class LMPipeline():
         input_ids = samp["input_ids"]
         source_len = 1
         
-        if self.args.model_type!="qwen" and 65535 in input_ids:
-            source_len = np.where(input_ids==65535)[0][0]
+        if self.split_id in input_ids:
+            source_len = np.where(input_ids==self.split_id)[0][0]
             input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
         input_ids = input_ids[:self.max_length]
         input_len = len(input_ids)

@@ -141,7 +141,12 @@ def main():
     ds_config["steps_per_print"] = args.gradient_accumulation_steps
     ds_config["zero_optimization"]["stage"] = 0
 
-    args.fp32 = not ds_config["fp16"]["enabled"]
+    if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
+        args.dtype = torch.float16
+    elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
+        args.dtype = torch.bfloat16
+    else:
+        args.dtype = torch.float32
     args.deepspeed_config = None
     
     # get the tokenizer

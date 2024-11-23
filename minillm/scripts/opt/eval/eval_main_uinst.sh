@@ -54,7 +54,7 @@ OPTS+=" --save ${SAVE_PATH}"
 OPTS+=" --seed 10"
 # deepspeed
 OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero1_fp16.json"
 OPTS+=" --type ${TYPE}"
 # gen
 OPTS+=" --do-sample"

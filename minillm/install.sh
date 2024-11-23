@@ -1,5 +1,5 @@
 export NCCL_DEBUG=""
-pip3 install https://github.com/t1101675/transformers.git@minillm
+pip3 install git+https://github.com/t1101675/transformers@minillm
 pip3 install torch
 pip3 install deepspeed
 pip3 install numerize

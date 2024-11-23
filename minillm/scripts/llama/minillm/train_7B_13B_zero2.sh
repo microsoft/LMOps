@@ -21,7 +21,7 @@ TEACHER_CKPT="${BASE_PATH}/results/llama/train/sft/llama-13B/"
 MP_SIZE=4
 # data
 PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/llama/"
-LM_DATA_DIR="${BASE_PATH}/processed_data/roberta/llama/512/20M/"
+LM_DATA_DIR="/home/yuxian/MiniPLM/processed_data/pretrain/dclm-small/llama-512"
 # runtime
 SAVE_PATH="${BASE_PATH}/results/llama/train/minillm/"
 # hp
@@ -89,7 +89,7 @@ OPTS+=" --top-p 1.0"
 OPTS+=" --temperature 1.0"
 # deepspeed
 OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2.json"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config_zero2_fp16.json"
 
 export NCCL_DEBUG=""
 export WANDB_DISABLED=True

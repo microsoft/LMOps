@@ -5,7 +5,7 @@ import torch
 import sys
 from numerize.numerize import numerize
 import numpy as np
-from data_utils.indexed_dataset import make_builder
+from data_utils.indexed_dataset import make_builder, best_fitting_dtype     
 from transformers import AutoTokenizer
 from arguments import get_args
 
@@ -36,6 +36,7 @@ def main():
     fin = open(file_name, "r", encoding="utf-8")
     # encoder use the tokenizer to encode data
     encoder = Encoder(args)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
 
     # 2. Mapping all datas with Encoder, with the help of multiprocessing
     pool = multiprocessing.Pool(processes=args.data_process_workers, initializer=encoder.initializer)
@@ -51,12 +52,10 @@ def main():
     valid_bin_file = os.path.join(args.processed_data_dir, f"valid_{0}.bin")
     valid_idx_file = os.path.join(args.processed_data_dir, f"valid_{0}.idx")
 
-    if args.model_type!="qwen":
-        train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=np.uint16)
-        valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=np.uint16)
-    else:
-        train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=np.uint32)
-        valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=np.uint32)
+    dtype = best_fitting_dtype(len(tokenizer))
+    print("dtype:", dtype)
+    train_binary_builder = make_builder(train_bin_file, impl="mmap", dtype=dtype)
+    valid_binary_builder = make_builder(valid_bin_file, impl="mmap", dtype=dtype)
 
     # put tokenized data into binary_builder
     buffer = []
