@@ -15,13 +15,11 @@
 
 import os
 import struct
-import shutil
 
 from itertools import accumulate
 
 import numpy as np
 import torch
-import torch.distributed as dist
 from utils import print_rank, save_rank
 
 
@@ -136,7 +134,7 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
         state = 0
         history = {-1:(0, 0)}
         for state in range(np.iinfo(np.int32).max):
-            source_file = path + name + f"_{state}"
+            source_file = os.path.join(path, name + f"_{state}")
             if self.exists(source_file):
                 index = self.Index(index_file_path(source_file))
                 history[state] = (history[state-1][1], history[state-1][1] + len(index))
@@ -148,7 +146,7 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
         return state, history
 
     def __getstate__(self):
-        return self._path + self._name + "_%d"%(self._state)
+        return os.path.join(self._path, self._name + "_%d"%(self._state))
 
     def __setstate__(self, state):
         self._state = state
@@ -163,7 +161,7 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
 
         self._state = state
 
-        source_file = path + name + f"_{self._state}"
+        source_file = os.path.join(path, name + f"_{self._state}")
         self._index = self.Index(index_file_path(source_file))
         self._bin_buffer_mmap = np.memmap(data_file_path(source_file), mode='r', order='C')
         self._bin_buffer = memoryview(self._bin_buffer_mmap)
@@ -198,6 +196,10 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
+            if idx >= self.total_length:
+                print(f"Distributed index stop interation. Idx: {idx} Total_length: {self.total_length}")
+                raise StopIteration
+
             while idx >= self.history[self._state][1] or idx < self.history[self._state][0]:
                 self._next_file()
             ptr, size = self._index[self.__relative_idx(idx)]

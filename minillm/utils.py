@@ -17,24 +17,7 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     AutoConfig,
-    ParallelOPTForCausalLM,
-    ParallelLlamaForCausalLM,
-    ParallelGPTJForCausalLM,
-    ParallelGPT2LMHeadModel,
-    ParallelMistralForCausalLM,
-    ParallelQWenLMHeadModel,
     mpu,)
-
-
-parallel_model_map = {
-    "opt": ParallelOPTForCausalLM,
-    "gptj": ParallelGPTJForCausalLM,
-    "gpt2": ParallelGPT2LMHeadModel,
-    "llama": ParallelLlamaForCausalLM,
-    "llama2": ParallelLlamaForCausalLM,
-    "mistral": ParallelMistralForCausalLM,
-    "qwen": ParallelQWenLMHeadModel,
-}
 
 
 # Logging
@@ -143,9 +126,9 @@ def get_model(args, device):
         config.is_model_parallel = True
         with init_empty_weights():
             if args.model_type=="qwen":
-                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
+                model = AutoModelForCausalLM.from_config(config).to(torch.bfloat16)
             else:
-                model = parallel_model_map[args.model_type](config).half()
+                model = AutoModelForCausalLM.from_config(config).half()
         load_parallel(model, args.model_path)
 
         if mpu.get_data_parallel_rank() == 0:

@@ -562,7 +562,11 @@ class PPOTrainer():
         os.makedirs(ckpt_dir, exist_ok=True)
         if self.args.model_parallel:
             if get_rank() == 0:
-                self.model.module.config.to_json_file(os.path.join(ckpt_dir, "config.json"))
+                config_dict = self.model.module.config.to_dict()
+                if "is_model_parallel" in config_dict:
+                    del config_dict["is_model_parallel"]
+                with open(os.path.join(ckpt_dir, "config.json"), "w") as f:
+                    json.dump(config_dict, f, indent=2)
                 self.tokenizer.save_pretrained(ckpt_dir)
             if mpu.get_data_parallel_rank() == 0:
                 save_parallel(self.model.module.base_model, ckpt_dir)
