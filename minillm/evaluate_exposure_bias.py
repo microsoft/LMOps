@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
-from utils import print_rank, save_rank, load_parallel, parallel_model_map
+from utils import print_rank, save_rank, load_parallel
 
 torch.set_num_threads(4)
         
@@ -159,7 +159,7 @@ def evaluate(args, tokenizer, model, teacher_model, dataset: PromptDataset, epoc
 def get_teacher_model(args, device):
     if args.model_parallel:
         config = AutoConfig.from_pretrained(args.teacher_model_path)
-        model = parallel_model_map[args.model_type](config)
+        model = AutoModelForCausalLM.from_config(config)
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
         model.eval()

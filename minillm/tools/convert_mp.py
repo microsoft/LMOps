@@ -2,22 +2,20 @@
 import torch
 import argparse
 import os
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoConfig
 from transformers import (
     decrease_mp_opt, increase_mp_opt,
-    decrease_mp_gptj, increase_mp_gptj,
     decrease_mp_llama, increase_mp_llama,
     decrease_mp_mistral, increase_mp_mistral,
-    decrease_mp_qwen, increase_mp_qwen,
+    # decrease_mp_qwen, increase_mp_qwen,
 )
 
 func_map = {
     "opt": (decrease_mp_opt, increase_mp_opt),
-    "gptj": (decrease_mp_gptj, increase_mp_gptj),
     "llama": (decrease_mp_llama, increase_mp_llama),
     "llama2": (decrease_mp_llama, increase_mp_llama),
     "mistral": (decrease_mp_mistral, increase_mp_mistral),
-    "qwen": (decrease_mp_qwen, increase_mp_qwen),
+    # "qwen": (decrease_mp_qwen, increase_mp_qwen),
 }
 
 
@@ -62,6 +60,9 @@ def main():
         d_list = [torch.load(os.path.join(ckpt_path, f"pytorch_model_{i}.bin"), map_location="cpu") for i in range(args.source_mp_size)]
         d = decrease_mp(d_list, half=args.half)
         torch.save(d, os.path.join(args.save_path, "pytorch_model.bin"))
+        config = AutoConfig.from_pretrained(args.input_path)
+        if hasattr(config, "is_model_parallel"):
+            del config.is_model_parallel
     else:
         args.save_path = os.path.join(args.input_path, f"mp{args.target_mp_size}")
         assert args.exist_ok or not any([os.path.exists(os.path.join(args.save_path, f"pytorch_model_{i}.bin")) for i in range(args.target_mp_size)])

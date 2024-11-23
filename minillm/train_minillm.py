@@ -9,7 +9,7 @@ from transformers import (
     AutoConfig,)
 
 from arguments import get_args
-from utils import print_args, initialize, load_parallel, get_tokenizer, parallel_model_map
+from utils import print_args, initialize, load_parallel, get_tokenizer
 
 from minillm import train, Reward
 
@@ -22,9 +22,9 @@ def get_teacher_model(args, device):
         config.is_model_parallel = True
         with init_empty_weights():
             if args.model_type=="qwen":
-                model = parallel_model_map[args.model_type](config).to(torch.bfloat16)
+                model = AutoModelForCausalLM.from_config(config).to(torch.bfloat16)
             else:
-                model = parallel_model_map[args.model_type](config).half()
+                model = AutoModelForCausalLM.from_config(config).half()
         load_parallel(model, args.teacher_model_path)
         model = model.to(device)
     else:

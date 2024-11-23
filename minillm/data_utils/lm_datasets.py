@@ -7,9 +7,8 @@ import numpy as np
 from torch.utils.data import Dataset
 from .distributed_indexed import DistributedMMapIndexedDataset
 
-from torch.distributed import get_rank, get_world_size, barrier
+from torch.distributed import get_rank, get_world_size
 from utils import print_rank
-from utils import save_rank
 
 
 class LMTrainDataset(Dataset):
