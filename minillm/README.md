@@ -6,21 +6,21 @@
 
 ![Results](./figures/results.png)
 
+See also:
++ [DPKD](https://github.com/microsoft/LMOps/tree/main/dpkd): A simple improvement of MiniLLM using DPO.
++ [MiniPLM](https://github.com/thu-coai/MiniPLM): Knowledge distillation for **pre-training** lanuage models.
+
 ## 1 Environment
 ```bash
-pip3 install -e transformers/
-pip3 install torch==2.0.1
-pip3 install deepspeed==0.10.0
-pip3 install torchvision==0.15.2
-pip3 install nltk
+pip3 install https://github.com/t1101675/transformers.git@minillm
+pip3 install torch
+pip3 install deepspeed
 pip3 install numerize
 pip3 install rouge-score
 pip3 install torchtyping
 pip3 install rich
 pip3 install accelerate
 pip3 install datasets
-pip3 install sentencepiece
-pip3 install protobuf==3.20.3
 pip3 install peft
 ```
 or
@@ -149,10 +149,10 @@ Multi-Node training is launched by `deepspeed`. We provide an example script in 
 
 ## 6 Citation
 ```bibtex
-@article{minillm,
-  title={Knowledge Distillation of Large Language Models},
+@inproceedings{minillm,
+  title={MiniLLM: Knowledge Distillation of Large Language Models},
   author={Gu, Yuxian and Dong, Li and Wei, Furu and Huang, Minlie},
-  journal={arXiv preprint arXiv:2306.08543},
-  year={2023}
+  booktitle={Proceedings of ICLR},
+  year={2024}
 }
 ```
