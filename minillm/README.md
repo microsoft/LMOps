@@ -29,6 +29,12 @@ bash install.sh
 ```
 
 Our data and pre-trained models are uploaded to our HuggingFace [repo](https://huggingface.co/MiniLLM).
+We modified the [transformers code base](https://github.com/t1101675/transformers/tree/minillm) to support model (tensor) parallel and teacher-mixed sampling. The modified lines are wrapped with
+```
+# ### MiniLLM BEGIN ###
+... SOME NEW CODES ...
+# ### MiniLLM END ###
+```
 
 ## 2 Data
 ### 2.1 Resources

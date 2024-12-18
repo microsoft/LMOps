@@ -1,20 +1,24 @@
 import os
 import json
-import torch
 import random
 import numpy as np
-from torch.utils.data import DataLoader, DistributedSampler
-from transformers import mpu
+from typing import Optional
+
+import torch
 import torch.distributed as dist
+from torch.utils.data import DataLoader, DistributedSampler
+from torch.distributed import get_rank, get_world_size
+
+from transformers import mpu, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from data_utils.distributed_indexed import DistributedMMapIndexedDataset
 from data_utils.indexed_dataset import best_fitting_dtype
-from torch.distributed import get_rank, get_world_size
 from utils import print_rank
 
 
 class PPOPipeline():
-    def __init__(self, args, tokenizer, split, ppo_data_path=None, fix_prompts=False, num=-1):
+    def __init__(self, args, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, 
+                 split: str, ppo_data_path: str = None, fix_prompts: bool = False, num: int = -1):
         super().__init__()
         self.tokenizer = tokenizer
         self.split_id = np.iinfo(best_fitting_dtype(len(tokenizer))).max
@@ -58,7 +62,7 @@ class PPOPipeline():
         # return prompt, rest
         return prompt, response
     
-    def collate(self, samples):
+    def collate(self, samples: list[tuple[np.ndarray, Optional[np.ndarray]]]) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         bs = len(samples)
         
         max_prompt_length = self.max_prompt_length
@@ -86,7 +90,10 @@ class PPOPipeline():
         
         return model_batch, no_model_batch
 
-    def move_to_device(self, model_batch, no_model_batch, device):
+    def move_to_device(self, 
+                       model_batch: dict[str, torch.Tensor], 
+                       no_model_batch: dict[str, torch.Tensor], 
+                       device: int) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         for k in model_batch:
             model_batch[k] = model_batch[k].to(device)        
         for k in no_model_batch:
@@ -94,7 +101,7 @@ class PPOPipeline():
         
         return model_batch, no_model_batch
 
-    def create_loader(self, batch_size: int, shuffle=False, drop_last: bool = False, num_workers: int = 0) -> DataLoader:
+    def create_loader(self, batch_size: int, shuffle: bool = False, drop_last: bool = False, num_workers: int = 0) -> DataLoader:
         if self.args.model_parallel:
             dp_world_size = mpu.get_data_parallel_world_size()
             dp_rank = mpu.get_data_parallel_rank()
@@ -109,7 +116,7 @@ class PPOPipeline():
 
 
 class LMPipeline():
-    def __init__(self, args, tokenizer, split, lm_data_path=None, num=-1):
+    def __init__(self, args, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, split: str, lm_data_path: Optional[str] = None, num: int = -1):
         super().__init__()
         self.tokenizer = tokenizer
         self.split_id = np.iinfo(best_fitting_dtype(len(tokenizer))).max
@@ -128,17 +135,22 @@ class LMPipeline():
     def __len__(self):
         return self.num
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         return self._get_lm(index)
 
-    def _get_lm(self, index):
+    def _get_lm(self, index: int):
         data = self.lm_ctx[index]
         input_ids = data.astype(int)
         return {
             "input_ids": input_ids[:self.max_length]
         }
 
-    def _process_lm(self, i, samp, model_data, no_model_data):
+    def _process_lm(self, 
+                    i: int, 
+                    samp: dict[str, np.ndarray],
+                    model_data: dict[str, torch.Tensor], 
+                    no_model_data: dict[str, torch.Tensor]):
+
         input_ids = samp["input_ids"]
         source_len = 1
         
@@ -156,7 +168,10 @@ class LMPipeline():
         no_model_data["loss_mask"][i][:input_len-1] = 1.0
         no_model_data["loss_mask"][i][:source_len-1] = 0
 
-    def move_to_device(self, model_batch, no_model_batch, device):
+    def move_to_device(self,
+                       model_batch: dict[str, torch.Tensor],
+                       no_model_batch: dict[str, torch.Tensor],
+                       device: int) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         for k in model_batch:
             model_batch[k] = model_batch[k].to(device)
 
@@ -165,7 +180,7 @@ class LMPipeline():
         
         return model_batch, no_model_batch
 
-    def collate(self, samples):
+    def collate(self, samples: list[dict[str, np.ndarray]]) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         bs = len(samples)
         
         max_length = self.max_length
@@ -188,7 +203,7 @@ class LMPipeline():
             
         return model_data, no_model_data
 
-    def create_loader(self, batch_size: int, shuffle=False, drop_last: bool = False, num_workers: int = 0) -> DataLoader:
+    def create_loader(self, batch_size: int, shuffle: bool = False, drop_last: bool = False, num_workers: int = 0) -> DataLoader:
         if self.args.model_parallel:
             dp_world_size = mpu.get_data_parallel_world_size()
             dp_rank = mpu.get_data_parallel_rank()

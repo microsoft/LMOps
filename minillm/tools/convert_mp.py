@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoConfig
 
 
-def increase_mp(d, mp_size, mp_weights_config):
+def increase_mp(d: dict[str, torch.Tensor], mp_size: int, mp_weights_config: dict):
 
     print("Increase MP size.")
 
@@ -39,7 +39,7 @@ def increase_mp(d, mp_size, mp_weights_config):
     return ckpts
 
 
-def decrease_mp(d_list, mp_weights_config):
+def decrease_mp(d_list: list, mp_weights_config: dict):
 
     print("Decrease MP size to 1.")
 
