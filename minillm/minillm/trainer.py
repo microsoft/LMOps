@@ -20,7 +20,6 @@ from transformers import (
 from transformers import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup
 
 from .utils import (
-    get_scheduler_class,
     get_log_probs,
     get_rev_kl,
     significant
@@ -45,7 +44,7 @@ class PPOTrainer():
     RL model trainer with an `accelerate` based backend
     """
 
-    def __init__(self, args, tokenizer: AutoTokenizer, reward_fn, ds_config):
+    def __init__(self, args, tokenizer: AutoTokenizer, reward_fn: callable, ds_config):
         self.args = args
         self.max_length = args.max_length
         self.ds_config = ds_config
@@ -125,9 +124,7 @@ class PPOTrainer():
         elif self.args.scheduler_name == "cosine_trm":
             scheduler = get_cosine_schedule_with_warmup(self.opt, num_warmup_steps=self.args.warmup_iters, num_training_steps=self.args.total_iters)
         else:
-            scheduler_class = get_scheduler_class(self.args.scheduler_name)
-            scheduler = scheduler_class(self.opt, eta_min=self.args.lr_min, T_max=self.args.total_iters)
-        
+            raise ValueError(f"Unknown scheduler: {self.args.scheduler_name}")
         return scheduler
 
     def setup_ds(self, model, optimizer=None, scheduler=None):
@@ -172,13 +169,13 @@ class PPOTrainer():
         
         return batch
 
-    def get_mask(self, tokens):
+    def get_mask(self, tokens: torch.Tensor) -> torch.Tensor:
         attention_mask = (
             tokens.not_equal(self.tokenizer.pad_token_id).long()
         )
         return attention_mask
 
-    def forward_model(self, batch):
+    def forward_model(self, batch: dict[str, torch.Tensor]):
         outputs = self.model(
             **batch,
             return_dict=True,
@@ -186,7 +183,11 @@ class PPOTrainer():
         )
         return outputs
 
-    def compute_logits_and_log_probs(self, query_ids, response_ids, inf_mask=None, base="base", return_logprobs=True):
+    def compute_logits_and_log_probs(
+            self, query_ids: torch.Tensor, response_ids: torch.Tensor, 
+            inf_mask: Optional[torch.Tensor] = None, base: bool = "base", return_logprobs: bool = True
+        ) -> Tuple[torch.Tensor, torch.Tensor] | torch.Tensor:
+        
         batch = self.get_model_inputs(
             query_ids, response_ids
         )
@@ -252,8 +253,11 @@ class PPOTrainer():
                             self.lm_iterator = iter(self.lm_dataloader)
                             lm_batch = next(self.lm_iterator)
 
+                        self.lm_pipeline.move_to_device(*lm_batch, self.device)
+                    else:
+                        lm_batch = None
+
                     self.store.move_to_device(batch, self.device)
-                    self.lm_pipeline.move_to_device(*lm_batch, self.device)
                     stats = {}
 
                     if self.args.model_parallel:
@@ -272,9 +276,13 @@ class PPOTrainer():
                     # compute rl-related loss on explored data
                     rl_loss, rl_loss_stats = self.losses.ppo_loss(batch, ppo_logits)
                     stats.update(rl_loss_stats)
-                    # compute lm-related loss on pre-training data
-                    pt_loss, pt_loss_stats = self.losses.pt_loss(lm_batch, lm_logits)
-                    stats.update(pt_loss_stats)
+                    
+                    # compute lm-related loss on pre-training data (optinal)
+                    if self.lm_pipeline is not None:
+                        pt_loss, pt_loss_stats = self.losses.pt_loss(lm_batch, lm_logits)
+                        stats.update(pt_loss_stats)
+                    else:
+                        pt_loss = 0
                     
                     loss = rl_loss + self.args.lm_coef * pt_loss
                     stats["tot_loss"] = loss.item()
@@ -390,12 +398,14 @@ class PPOTrainer():
         self.eval_dataloader = self.eval_pipeline.create_loader(
             self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, drop_last=False)
 
-        self.lm_dataloader = self.lm_pipeline.create_loader(
-            self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, drop_last=True)
-        self.lm_iterator = iter(self.lm_dataloader)
+        if self.lm_pipeline is not None:
+            self.lm_dataloader = self.lm_pipeline.create_loader(
+                self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, drop_last=True)
+            self.lm_iterator = iter(self.lm_dataloader)
         
-        self.eval_lm_dataloader = self.eval_lm_pipeline.create_loader(
-            self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, drop_last=False)
+        if self.eval_lm_pipeline is not None:
+            self.eval_lm_dataloader = self.eval_lm_pipeline.create_loader(
+                self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, drop_last=False)
 
         self.n_updates_per_batch = self.args.ppo_epochs
         self.total_steps = int(
@@ -410,8 +420,9 @@ class PPOTrainer():
         eval_results = {}
         eval_rl_results, preds, response_texts = self.evaluate_ppo()
         eval_results.update(eval_rl_results)
-        eval_pt_results = self.evaluate_pt()
-        eval_results.update(eval_pt_results)
+        if self.eval_lm_pipeline is not None:
+            eval_pt_results = self.evaluate_pt()
+            eval_results.update(eval_pt_results)
         
         response_texts = response_texts[:len(self.eval_pipeline.ppo_answers)]            
         self.save_evals(preds, eval_results, response_texts)
@@ -422,7 +433,8 @@ class PPOTrainer():
             keys = ["rougeL", "exact_match", "rev_kl", "lens", "pt_loss", "lm_loss", "kd_loss"]
             eval_log_str = "eval "
             for key in keys:
-                eval_log_str += "| {}: {:.3f} ".format(key, eval_results[key])
+                if key in eval_results:
+                    eval_log_str += "| {}: {:.3f} ".format(key, eval_results[key])
             print_rank(eval_log_str)
             save_rank(eval_log_str, os.path.join(self.args.save, "log.txt"))
 

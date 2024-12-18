@@ -1,19 +1,24 @@
 import torch
+
+from typing import Optional
+
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizerFast,
+    PreTrainedTokenizer,
     mpu)
 
 
 class Reward():
-    def __init__(self, args, tokenizer: AutoTokenizer, model: AutoModelForCausalLM):
+    def __init__(self, args, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, model: PreTrainedModel):
         self.args = args
         self.tokenizer = tokenizer
         self.model = model
         self.pad_token_id = tokenizer.pad_token_id
         self.eos_token_id = tokenizer.eos_token_id
 
-    def get_input_batch(self, input_ids, gen_ids, output_pos=True):
+    def get_input_batch(self, input_ids: torch.Tensor, gen_ids: torch.Tensor, 
+                        output_pos: bool = True) -> dict[str, torch.Tensor|bool]:
         full_ids = torch.cat([input_ids, gen_ids], dim=-1)
         attention_mask = (full_ids != self.pad_token_id)
 
@@ -30,7 +35,8 @@ class Reward():
         
         return model_inputs
 
-    def reward_fn(self, input_ids, gen_ids, inf_mask=None, output_pos=True):
+    def reward_fn(self, input_ids: torch.Tensor, gen_ids: torch.Tensor, 
+                  inf_mask: Optional[torch.Tensor] = None, output_pos: bool = True) -> dict[str, torch.Tensor]:
         # not include eos token
         
         self.model.eval()
@@ -64,7 +70,6 @@ class Reward():
         else:
             next_state_value = torch.logsumexp(current_logits, dim=-1)
         next_state_value = next_state_value * mask[:, :-1]
-        raw_next_state_value = next_state_value
 
         scores = selection_value - next_state_value
         

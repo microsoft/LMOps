@@ -107,10 +107,14 @@ class Loss():
         
         return loss_exp_ent
 
-    def get_input_batch(self, ppo_batch: PPORLBatch, pt_batch):
+    def get_input_batch(self, ppo_batch: PPORLBatch, pt_batch: Optional[Tuple[dict, dict]] = None):
         query_tensors = ppo_batch.query_tensors
         response_tensors = ppo_batch.response_tensors
         ppo_input_batch = self.trainer.get_model_inputs(query_tensors, response_tensors)
+
+        if pt_batch is None: # only ppo, no pre-training corpus
+            return ppo_input_batch
+
         pt_input_batch, _ = pt_batch
         # merge batch
         assert len(ppo_input_batch) == len(pt_input_batch), list(ppo_input_batch.keys())
@@ -119,7 +123,7 @@ class Loss():
             input_batch[k] = torch.cat([ppo_input_batch[k], pt_input_batch[k]], dim=0)
         return input_batch
 
-    def ppo_loss(self, batch: PPORLBatch, logits):
+    def ppo_loss(self, batch: PPORLBatch, logits: torch.Tensor):
         stats = {}
         query_tensors = batch.query_tensors
         response_tensors = batch.response_tensors
@@ -191,7 +195,7 @@ class Loss():
         
         return loss, stats
 
-    def pt_loss(self, batch, logits):
+    def pt_loss(self, batch: tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]], logits: torch.Tensor):
         stats = {}
         model_batch, no_model_batch = batch
         loss_mask = (no_model_batch["label"] != -100).int()

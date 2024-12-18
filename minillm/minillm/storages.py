@@ -74,7 +74,7 @@ class PPORolloutStorage(BaseRolloutStore):
     def push(self, exps: Iterable[PPORLElement]):
         self.history += exps
 
-    def save(self, path):
+    def save(self, path: str):
         def exp_to_dict(exp):
             return {k: v for k, v in exp.__dict__.items()}
 
@@ -82,7 +82,7 @@ class PPORolloutStorage(BaseRolloutStore):
         
         torch.save(data, os.path.join(path, f"{get_rank()}.pkl"))
             
-    def load(self, path):
+    def load(self, path: str):
         data = torch.load(os.path.join(path, f"history_{get_rank()}.pkl"), map_location="cpu")
         self.history = [PPORLElement(**d) for d in data]
 
@@ -107,7 +107,7 @@ class PPORolloutStorage(BaseRolloutStore):
     def __len__(self) -> int:
         return len(self.history)
 
-    def collate(self, elems: Iterable[PPORLElement]):
+    def collate(self, elems: Iterable[PPORLElement]) -> PPORLBatch:
         if any([e is None for e in elems]):
             print(elems)
         return PPORLBatch(
@@ -174,10 +174,10 @@ class PPORolloutStorage(BaseRolloutStore):
             self, batch_size=batch_size, collate_fn=self.collate, num_workers=num_workers, shuffle=shuffle, drop_last=drop_last, generator=self.rng
         )
         
-    def broadcast(self, batch: PPORLBatch, src=0, group=None):
+    def broadcast(self, batch: PPORLBatch, src: int = 0, group=None):
         for k, v in batch.__dict__.items():
             dist.broadcast(batch.__dict__[k], src=src, group=group)
             
-    def move_to_device(self, batch: PPORLBatch, device):
+    def move_to_device(self, batch: PPORLBatch, device: int):
         for k, v in batch.__dict__.items():
             batch.__dict__[k] = batch.__dict__[k].to(device)

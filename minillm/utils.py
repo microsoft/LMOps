@@ -1,23 +1,29 @@
-from typing import Dict
-import numpy as np
 import os
 import time
-import torch.distributed as dist
-from torch.distributed import get_rank
 import random
+import numpy as np
+from datetime import timedelta
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from datetime import timedelta
+import torch.distributed as dist
+from torch.distributed import get_rank, group
+
 import deepspeed
 from accelerate import load_checkpoint_and_dispatch, init_empty_weights
 from peft import get_peft_model, LoraConfig, TaskType, PeftModel
 
 
 from transformers import (
+    PreTrainedModel,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
     AutoModelForCausalLM,
     AutoTokenizer,
     AutoConfig,
-    mpu,)
+    mpu
+)
 
 
 # Logging
@@ -30,19 +36,23 @@ def print_args(args):
         print('  {} {} {}'.format(arg, dots, getattr(args, arg)), flush=True)
 
 
-def save_rank(log_str, save_path, rank=0):
+def save_rank(log_str: str, save_path: str, rank: int = 0):
     if not dist.is_initialized() or dist.get_rank() == rank:
         with open(save_path, "a") as f:
             f.write(log_str + "\n")
 
 
-def print_rank(*args, rank=0, **kwargs):
+def print_rank(*args, rank: int = 0, **kwargs):
     if not dist.is_initialized() or dist.get_rank() == rank:
         print(*args, **kwargs)
 
 
 # Distributed
-def all_gather(t, dim=0, world_size=None, group=None, op="cat"):
+def all_gather(
+        t: torch.Tensor, dim: int = 0, world_size: Optional[int] = None, 
+        group: Optional[group] = None, op: str = "cat"
+    ) -> torch.Tensor:
+    
     if world_size is None:
         world_size = dist.get_world_size()
     all_t = [torch.zeros_like(t) for _ in range(world_size)]
@@ -55,7 +65,7 @@ def all_gather(t, dim=0, world_size=None, group=None, op="cat"):
 
 
 # Initialize
-def set_random_seed(seed, mp=False):
+def set_random_seed(seed: int, mp: bool = False):
     """Set random seed for reproducability."""
     seed = dist.get_rank() + seed
     if seed is not None and seed > 0:
@@ -118,7 +128,7 @@ def initialize(args):
 
 
 # Load and save model
-def get_model(args, device):
+def get_model(args, device: int) -> PreTrainedModel:
     config = AutoConfig.from_pretrained(args.model_path)
     
     st_time = time.time()
@@ -166,7 +176,7 @@ def get_model(args, device):
     return model
 
 
-def get_optimizer_params(args, model: nn.Module):
+def get_optimizer_params(args, model: nn.Module) -> list[dict]:
     # taken from https://github.com/facebookresearch/SpanBERT/blob/0670d8b6a38f6714b85ea7a033f16bd8cc162676/code/run_tacred.py
     param_optimizer = list(model.named_parameters())
     no_decay = ['bias', 'ln_f.weight', 'ln_1.weight', 'ln_2.weight', 'ln_cross_attn']
@@ -180,7 +190,7 @@ def get_optimizer_params(args, model: nn.Module):
     return optimizer_grouped_parameters
 
 
-def get_optimizer_params_peft(args, model: nn.Module):
+def get_optimizer_params_peft(args, model: nn.Module) -> list:
     # taken from https://github.com/facebookresearch/SpanBERT/blob/0670d8b6a38f6714b85ea7a033f16bd8cc162676/code/run_tacred.py
     param_optimizer = list(model.named_parameters())
     optimizer_grouped_parameters = [
@@ -190,7 +200,7 @@ def get_optimizer_params_peft(args, model: nn.Module):
     return optimizer_grouped_parameters
 
 
-def get_tokenizer(args):
+def get_tokenizer(args) -> PreTrainedTokenizer | PreTrainedTokenizerFast:
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
     if args.model_type in ["gpt2", "opt", "llama", "gptj", "llama2", "mistral", "qwen2"]:
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -198,7 +208,7 @@ def get_tokenizer(args):
     return tokenizer
 
 
-def load_parallel(model, load_dir):
+def load_parallel(model: nn.Module, load_dir: str):
     mp_rank = mpu.get_model_parallel_rank()
     assert mpu.get_model_parallel_world_size() != 1
     checkpoint_name = os.path.join(load_dir, f"mp{mpu.get_model_parallel_world_size()}", f"pytorch_model_{mp_rank}.bin")
@@ -208,7 +218,7 @@ def load_parallel(model, load_dir):
     print(f"Rank {get_rank()}: {checkpoint_name} loaded.")
 
 
-def save_parallel(model, save_dir):
+def save_parallel(model: nn.Module, save_dir: str):
     mp_rank = mpu.get_model_parallel_rank()
     os.makedirs(os.path.join(save_dir, f"mp{mpu.get_model_parallel_world_size()}"), exist_ok=True)
     checkpoint_name = os.path.join(save_dir, f"mp{mpu.get_model_parallel_world_size()}", f"pytorch_model_{mp_rank}.bin")
