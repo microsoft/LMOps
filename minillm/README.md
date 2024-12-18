@@ -39,11 +39,19 @@ We modified the [transformers code base](https://github.com/t1101675/transformer
 ## 2 Data
 ### 2.1 Resources
 + The training/evaluation intruction-response data before processing can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly), [self-inst](https://huggingface.co/datasets/MiniLLM/self-inst), [vicuna](https://huggingface.co/datasets/MiniLLM/Vicuna), [sinst](https://huggingface.co/datasets/MiniLLM/sinst), and [uinst](https://huggingface.co/datasets/MiniLLM/uinst)
-+ The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
-+ The processed data can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly-processed), [openwebtext](https://huggingface.co/datasets/MiniLLM/openwebtext-processed), [roberta-corpus](https://huggingface.co/datasets/MiniLLM/roberta-corpus-processed).
++ (Optional) The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
++ The processed data can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly-processed), [openwebtext](https://huggingface.co/datasets/MiniLLM/openwebtext-processed) (Optional), [roberta-corpus](https://huggingface.co/datasets/MiniLLM/roberta-corpus-processed) (Optional).
 
 
 ### 2.2 Data Processing
+#### SFT Data ($\mathcal{D}$ in paper)
+```bash
+bash scripts/gpt2/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
+bash scripts/opt/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
+bash scripts/llama/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
+```
+
+#### (Optional) Plain-text Corpus ($\mathcal{D}_\text{PT}$ in paper)
 Get plain-text corpus $\mathcal{D}_\text{PT}$:
 ```bash
 python3 tools/get_openwebtext.py
@@ -52,13 +60,8 @@ This script will replace the continuous `\n` in each document with a special tok
 
 Tokenize the data and store them in binary files:
 ```bash
-bash scripts/gpt2/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
 bash scripts/gpt2/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process OpenWebText Train / Validation Data
-
-bash scripts/opt/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
 bash scripts/opt/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoBERTa Corpus Train / Validation Data
-
-bash scripts/llama/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
 bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoBERTa Corpus Train / Validation Data
 ```
 
@@ -146,6 +149,10 @@ bash scripts/gpt2/minillm/train_base_xl.sh /PATH/TO/MiniLLM
 bash scripts/gpt2/minillm/train_medium_xl.sh /PATH/TO/MiniLLM
 bash scripts/gpt2/minillm/train_large_xl.sh /PATH/TO/MiniLLM
 ```
+
+For the data we use:
++ `PROMPT_DATA_DIR` is the SFT data ($\mathcal{D}$, Dolly), which is required.
++ `LM_DATA_DIR` is the plain-text corpus ($\mathcal{D}_\text{PT}$), which is optional. See `minillm/scripts/llama/minillm/train_7B_13B_no_pt.sh` for training without `LM_DATA_DIR` (by just commenting out the `OPTS+=" --lm-data-dir ${LM_DATA_DIR}"` line).
 
 ### 5.3 Multi-Node training
 Multi-Node training is launched by `deepspeed`. We provide an example script in `scripts/llama/sft/sft_7B_mn.sh` for multi-node training. Compared to single-node scripts, some of the `DISTRIBUTED_ARGS` are changed, and you need to specify a hostfile like `configs/hostfiles/node_0_1` to tell the script which nodes to use. For more information, please refer to HuggingFace's [tutorial](https://huggingface.co/docs/transformers/main_classes/deepspeed#the-deepspeed-launcher).
