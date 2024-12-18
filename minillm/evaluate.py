@@ -23,7 +23,7 @@ from evaluate_exposure_bias import evaluate_eb, prepare_dataset_eb
 torch.set_num_threads(4)
 
 
-def setup_model(args, ds_config, device):
+def setup_model(args, ds_config: dict, device: int):
     # get the model
     model = get_model(args, device)
     # get the optimizer and lr_scheduler

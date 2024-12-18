@@ -1,31 +1,37 @@
-from data_utils.prompt_datasets import PromptDataset
-from transformers import GenerationConfig, mpu
-
 import os
+import json
+import numpy as np
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.distributed as dist
 from torch.utils.data import DataLoader, DistributedSampler
-import torch.nn.functional as F
-from tqdm import tqdm
-import numpy as np
-import json
-from utils import print_rank, save_rank, all_gather
 
+from transformers import (
+    GenerationConfig, 
+    PreTrainedTokenizer, 
+    PreTrainedTokenizerFast,
+    PreTrainedModel,
+    mpu, 
+)
+
+from utils import print_rank, save_rank, all_gather
+from data_utils.prompt_datasets import PromptDataset
 from rouge_metric import compute_metrics
 
 torch.set_num_threads(4)
 
 
-def prepare_dataset_main(args, tokenizer):
+def prepare_dataset_main(args, tokenizer: PreTrainedTokenizerFast | PreTrainedTokenizer):
     data = {}
     data["test"] = PromptDataset(args, tokenizer, "valid", args.data_dir, args.dev_num)
 
     return data
 
 
-def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
+def run_model(args, tokenizer: PreTrainedTokenizerFast | PreTrainedTokenizer, model, dataset: PromptDataset, epoch, device):
     
     collate_fn = dataset.collate
     
@@ -130,7 +136,8 @@ def run_model(args, tokenizer, model, dataset: PromptDataset, epoch, device):
         all_response_ids)
 
 
-def evaluate_main(args, tokenizer, model, dataset: PromptDataset, split, epoch, device):
+def evaluate_main(args, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, 
+                  model: PreTrainedModel, dataset: PromptDataset, split: str, epoch: int, device: int):
         
     lm_loss, query_ids, response_ids = run_model(args, tokenizer, model, dataset, epoch, device)
     query_strs = tokenizer.batch_decode(query_ids, skip_special_tokens=True)
