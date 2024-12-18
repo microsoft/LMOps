@@ -152,7 +152,7 @@ bash scripts/gpt2/minillm/train_large_xl.sh /PATH/TO/MiniLLM
 
 For the data we use:
 + `PROMPT_DATA_DIR` is the SFT data ($\mathcal{D}$, Dolly), which is required.
-+ `LM_DATA_DIR` is the plain-text corpus ($\mathcal{D}_\text{PT}$), which is optional. See `minillm/scripts/llama/minillm/train_7B_13B_no_pt.sh` for training without `LM_DATA_DIR` (by just commenting out the `OPTS+=" --lm-data-dir ${LM_DATA_DIR}"` line).
++ `LM_DATA_DIR` is the plain-text corpus ($\mathcal{D}_\text{PT}$), which is optional. See `minillm/scripts/gpt2/minillm/train_base_xl_no_pt.sh` for training without `LM_DATA_DIR` (by just commenting out the `OPTS+=" --lm-data-dir ${LM_DATA_DIR}"` line).
 
 ### 5.3 Multi-Node training
 Multi-Node training is launched by `deepspeed`. We provide an example script in `scripts/llama/sft/sft_7B_mn.sh` for multi-node training. Compared to single-node scripts, some of the `DISTRIBUTED_ARGS` are changed, and you need to specify a hostfile like `configs/hostfiles/node_0_1` to tell the script which nodes to use. For more information, please refer to HuggingFace's [tutorial](https://huggingface.co/docs/transformers/main_classes/deepspeed#the-deepspeed-launcher).

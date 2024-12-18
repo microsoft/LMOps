@@ -6,6 +6,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 from .sampler import PPOSampler
 from .pipelines import PPOPipeline, LMPipeline
 from .trainer import PPOTrainer
+from .reward import Reward
 
 def train(
     args,
