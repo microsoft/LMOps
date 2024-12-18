@@ -1,50 +1,48 @@
-import time
 import os
+import json
+import math
+import time
+import random
+from tqdm import tqdm
+from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
+
 import deepspeed
-
-import random
-import json
-from tqdm import tqdm
-import math
-
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
     AutoConfig,
     mpu,
-    GenerationConfig)
-
-from transformers import get_constant_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup
-from torch.optim.lr_scheduler import CosineAnnealingLR
+    GenerationConfig,
+    get_constant_schedule_with_warmup,
+    get_polynomial_decay_schedule_with_warmup
+)
+from accelerate import init_empty_weights
+from peft import PeftModel
 
 from arguments import get_args
-
 from data_utils.lm_datasets import LMTrainDataset
-from utils import get_optimizer_params, get_optimizer_params_peft, print_args, initialize
-from utils import print_rank, get_rank
-from utils import save_rank
-from utils import all_gather
-from utils import load_parallel, save_parallel
-from utils import get_tokenizer, get_model
-
-from accelerate import init_empty_weights
-
+from utils import (
+    get_optimizer_params, get_optimizer_params_peft, print_args, initialize,
+    print_rank, get_rank, save_rank, all_gather, load_parallel, save_parallel,
+    get_tokenizer, get_model)
 from rouge_metric import compute_metrics
 
-from peft import PeftModel
 
 torch.set_num_threads(4)
 
 
-def get_teacher_model(args, device):
+def get_teacher_model(args, device: int):
     config = AutoConfig.from_pretrained(args.teacher_model_path)
     if args.model_parallel:
         config.is_model_parallel = True
@@ -220,7 +218,9 @@ def get_teacher_lm_loss(args, tokenizer, model, teacher_model, model_batch):
     return lm_loss
 
 
-def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, optimizer: AdamW, lr_scheduler, dataset, device, teacher_model=None):
+def finetune(args, tokenizer: PreTrainedTokenizerFast | PreTrainedTokenizer, 
+             model: deepspeed.DeepSpeedEngine, optimizer: AdamW, 
+             lr_scheduler, dataset, device: int, teacher_model: Optional[PreTrainedModel] = None):
     print_rank("Start Fine-tuning")
 
     # print_inspect(model, '*')
@@ -363,7 +363,8 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
     return model
 
 
-def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, device):
+def evaluate(args, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast, model: PreTrainedModel, 
+             dataset: LMTrainDataset, split: str, epoch: int, device: int):
     
     collate_fn = dataset.collate
 

@@ -1,17 +1,17 @@
 from deepspeed import DeepSpeedConfig
 from typing import Optional
+from transformers import PreTrainedModel, PreTrainedTokenizer
 
 # from trlx.utils.loading import get_orchestrator, get_pipeline, get_trainer
 from .sampler import PPOSampler
 from .pipelines import PPOPipeline, LMPipeline
 from .trainer import PPOTrainer
-from .reward import Reward
 
 def train(
     args,
-    tokenizer,
-    reward_fn = None,
-    teacher_model=None,
+    tokenizer: PreTrainedTokenizer,
+    reward_fn: Optional[callable] = None,
+    teacher_model: Optional[PreTrainedModel] = None,
     prompt_data: Optional[str] = None,
     eval_prompt_data: Optional[str] = None,
     lm_data: Optional[str] = None,

@@ -6,7 +6,7 @@ from utils import get_model
 
 
 class PPOModel(nn.Module):
-    def __init__(self, args, device):
+    def __init__(self, args, device: int):
         super().__init__()
         self.model_parallel = args.model_parallel
         self.config = AutoConfig.from_pretrained(args.model_path)
@@ -20,5 +20,5 @@ class PPOModel(nn.Module):
     def generate(self, **x):
         return self.base_model.generate(**x)
     
-    def set_force_gradient_checkpointing(self, value):
+    def set_force_gradient_checkpointing(self, value: bool):
         self.base_model.set_force_gradient_checkpointing(value)
