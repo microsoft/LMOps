@@ -45,6 +45,7 @@ OPTS+=" --model-parallel"
 OPTS+=" --model-parallel-size ${MP_SIZE}"
 # data
 OPTS+=" --prompt-data-dir ${PROMPT_DATA_DIR}"
+# OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
 OPTS+=" --dev-num 1000"
 OPTS+=" --num-workers 0"
 # hp
