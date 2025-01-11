@@ -39,16 +39,28 @@ We modified the [transformers code base](https://github.com/t1101675/transformer
 ## 2 Data
 ### 2.1 Resources
 + The training/evaluation intruction-response data before processing can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly), [self-inst](https://huggingface.co/datasets/MiniLLM/self-inst), [vicuna](https://huggingface.co/datasets/MiniLLM/Vicuna), [sinst](https://huggingface.co/datasets/MiniLLM/sinst), and [uinst](https://huggingface.co/datasets/MiniLLM/uinst)
+  ```bash
+  huggingface-cli download MiniLLM/dolly --repo-type dataset /PATH_TO/LMOps/minillm/data/dolly/
+  huggingface-cli download MiniLLM/self-inst --repo-type dataset /PATH_TO/LMOps/minillm/data/self-inst/
+  huggingface-cli download MiniLLM/Vicuna --repo-type dataset /PATH_TO/LMOps/minillm/data/vicuna/
+  huggingface-cli download MiniLLM/sinst --repo-type dataset /PATH_TO/LMOps/minillm/data/sinst/
+  huggingface-cli download MiniLLM/uinst --repo-type dataset /PATH_TO/LMOps/minillm/data/uinst/
+  ```
 + (Optional) The plain-text corpus $\mathcal{D}_\text{PT}$ can be download from the HugginFace datasets [repository](https://huggingface.co/datasets/openwebtext). For reproducibility, we recommend you to use the following preprocessed data.
 + The processed data can be downloaded from the following links: [dolly](https://huggingface.co/datasets/MiniLLM/dolly-processed), [openwebtext](https://huggingface.co/datasets/MiniLLM/openwebtext-processed) (Optional), [roberta-corpus](https://huggingface.co/datasets/MiniLLM/roberta-corpus-processed) (Optional).
+  ```bash
+  huggingface-cli download MiniLLM/dolly-processed --repo-type dataset --local-dir /PATH_TO/LMOps/minillm/processed_data/dolly/
+  huggingface-cli download MiniLLM/openwebtext-processed --repo-type dataset --local-dir /PATH_TO/LMOps/minillm/processed_data/openwebtext/gpt2/512/10M/ # Optional
+  huggingface-cli download MiniLLM/roberta-corpus-processed --repo-type dataset --local-dir /PATH_TO/LMOps/minillm/processed_data/openwebtext/ # Optional
+  ```
 
 
 ### 2.2 Data Processing
 #### SFT Data ($\mathcal{D}$ in paper)
 ```bash
-bash scripts/gpt2/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
-bash scripts/opt/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
-bash scripts/llama/tools/process_data_dolly.sh /PATH/TO/MiniLLM # Process Dolly Train / Validation Data
+bash scripts/gpt2/tools/process_data_dolly.sh /PATH_TO/LMOps/minillm # Process Dolly Train / Validation Data
+bash scripts/opt/tools/process_data_dolly.sh /PATH_TO/LMOps/minillm # Process Dolly Train / Validation Data
+bash scripts/llama/tools/process_data_dolly.sh /PATH_TO/LMOps/minillm # Process Dolly Train / Validation Data
 ```
 
 #### (Optional) Plain-text Corpus ($\mathcal{D}_\text{PT}$ in paper)
@@ -60,9 +72,9 @@ This script will replace the continuous `\n` in each document with a special tok
 
 Tokenize the data and store them in binary files:
 ```bash
-bash scripts/gpt2/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process OpenWebText Train / Validation Data
-bash scripts/opt/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoBERTa Corpus Train / Validation Data
-bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoBERTa Corpus Train / Validation Data
+bash scripts/gpt2/tools/process_data_pretrain.sh /PATH_TO/LMOps/minillm # Process OpenWebText Train / Validation Data
+bash scripts/opt/tools/process_data_pretrain.sh /PATH_TO/LMOps/minillm # Process RoBERTa Corpus Train / Validation Data
+bash scripts/llama/tools/process_data_pretrain.sh /PATH_TO/LMOps/minillm # Process RoBERTa Corpus Train / Validation Data
 ```
 
 ## 3 Models
@@ -71,6 +83,12 @@ bash scripts/llama/tools/process_data_pretrain.sh /PATH/TO/MiniLLM # Process RoB
 
 #### Base Pre-trained Models
 To run fine-tuning or standard KD baselines, you need to download the model checkpoints from [Huggingface Model Hub] and put them in `checkpoints/`. For example, for gpt2-large, you can download the model from this [link](https://huggingface.co/gpt2-large/tree/main) and put them in `checkpoints/gpt2-large`.
+  ```bash
+  huggingface-cli download gpt2 --repo-type model /PATH_TO/LMOps/minillm/checkpoints/gpt2-base
+  huggingface-cli download gpt2-medium --repo-type model /PATH_TO/LMOps/minillm/checkpoints/gpt2-medium
+  huggingface-cli download gpt2-large --repo-type model /PATH_TO/LMOps/minillm/checkpoints/gpt2-large
+  huggingface-cli download gpt2-xl --repo-type model /PATH_TO/LMOps/minillm/checkpoints/gpt2-xlarge
+  ```
 
 Alternatively, you can also change the `CKPT` variable in each script to the corresponding model name to enable Transformers to download the base models automatically. For example, set `CKPT="gpt2-large"` in `scripts/gpt2/sft/sft_large.sh` causes download of the gpt2-large base model from the HugginFace model hub.
 
@@ -78,8 +96,8 @@ Alternatively, you can also change the `CKPT` variable in each script to the cor
 1. LLaMA models require license and cannot be directly downloaded. 
 2. If you want to use model parallel for training, it is recommended to download the models to `checkpoints` because you need to run `tools/convert_mp.py` to change their model parallel sizes (see next section).
 
-### 3.2 Change Model Parallel Size
-You can increase/decrease the tensor parallel sizes with
+### (Optional) 3.2 Change Model Parallel Size
+If you find the model is too large to fit in your GPUs, you can increase/decrease the tensor parallel sizes with
 ```bash
 python3 tools/convert_mp.py \
     --input_path results/llama/train/minillm/7B-init-13B-sft \
@@ -89,11 +107,13 @@ python3 tools/convert_mp.py \
 ```
 To use the model with Model Parallel, we provide two example scripts for [training](https://github.com/microsoft/LMOps/tree/main/minillm/scripts/llama/sft/sft_7B_mp4.sh) and [evaluation](https://github.com/microsoft/LMOps/tree/main/minillm/scripts/llama/sft/eval_main_dolly_mp4.sh).
 
+NOTE: Model parallelism is not applied to gpt2 because these models are generally sufficiant small to fit in common GPUs.
+
 ## 4 Run Evaluation
 ```bash
-bash scripts/gpt2/eval/run_eval.sh /PATH/TO/MiniLLM
-bash scripts/opt/eval/run_eval.sh /PATH/TO/MiniLLM
-bash scripts/llama/eval/run_eval.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/eval/run_eval.sh /PATH_TO/LMOps/minillm
+bash scripts/opt/eval/run_eval.sh /PATH_TO/LMOps/minillm
+bash scripts/llama/eval/run_eval.sh /PATH_TO/LMOps/minillm
 ```
 
 ## 5 Train
@@ -104,50 +124,50 @@ Some large models require tensor parallel size = 4, which is set in the scripts 
 The final checkpoints are selected by the Rouge-L scores.
 #### Fine-tune the teacher models
 ```bash
-bash scripts/gpt2/sft/sft_xlarge.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/sft/sft_xlarge.sh /PATH_TO/LMOps/minillm
 ```
 #### SFT Baselines
 ```bash
-bash scripts/gpt2/sft/sft_base.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/sft/sft_medium.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/sft/sft_large.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/sft/sft_base.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/sft/sft_medium.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/sft/sft_large.sh /PATH_TO/LMOps/minillm
 ```
 
 #### KD Baselines
 ```bash
-bash scripts/gpt2/kd/kd_base.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/kd/kd_medium.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/kd/kd_large.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/kd/kd_base.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/kd/kd_medium.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/kd/kd_large.sh /PATH_TO/LMOps/minillm
 ```
 
 #### SeqKD Baselines
 Generate and process responses with the teacher:
 ```bash
-bash scripts/gpt2/tools/generate_data_seqkd.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/tools/process_pseudo_data_seqkd.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/tools/generate_data_seqkd.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/tools/process_pseudo_data_seqkd.sh /PATH_TO/LMOps/minillm
 ```
 Fine-tune the model with SeqKD:
 ```bash
-bash scripts/gpt2/seqkd/seqkd_base.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/seqkd/seqkd_medium.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/seqkd/seqkd_large.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/seqkd/seqkd_base.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/seqkd/seqkd_medium.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/seqkd/seqkd_large.sh /PATH_TO/LMOps/minillm
 ```
 
 ### 5.2 MiniLLM
 #### Initial Checkpoints
 The final checkpoints are selected by the **validation loss**.
 ```bash
-bash scripts/gpt2/sft/sft_base.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/sft/sft_medium.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/sft/sft_large.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/sft/sft_base.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/sft/sft_medium.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/sft/sft_large.sh /PATH_TO/LMOps/minillm
 ```
 
 #### Train
 The final checkpoints are selected by the Rouge-L scores.
 ```bash
-bash scripts/gpt2/minillm/train_base_xl.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/minillm/train_medium_xl.sh /PATH/TO/MiniLLM
-bash scripts/gpt2/minillm/train_large_xl.sh /PATH/TO/MiniLLM
+bash scripts/gpt2/minillm/train_base_xl.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/minillm/train_medium_xl.sh /PATH_TO/LMOps/minillm
+bash scripts/gpt2/minillm/train_large_xl.sh /PATH_TO/LMOps/minillm
 ```
 
 For the data we use:
