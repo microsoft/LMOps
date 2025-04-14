@@ -142,11 +142,11 @@ def main():
     ds_config["zero_optimization"]["stage"] = 0
 
     if "fp16" in ds_config and ds_config["fp16"]["enabled"]:
-        args.dtype = torch.float16
+        args.dtype = "torch.float16"
     elif "bf16" in ds_config and ds_config["bf16"]["enabled"]:
-        args.dtype = torch.bfloat16
+        args.dtype = "torch.bfloat16"
     else:
-        args.dtype = torch.float32
+        args.dtype = "torch.float32"
     args.deepspeed_config = None
     
     # get the tokenizer
