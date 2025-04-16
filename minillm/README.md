@@ -126,6 +126,9 @@ The final checkpoints are selected by the Rouge-L scores.
 ```bash
 bash scripts/gpt2/sft/sft_xlarge.sh /PATH_TO/LMOps/minillm
 ```
+Fine-tuned teacher model:
++ [teacher-gpt2-xlarge](https://huggingface.co/MiniLLM/teacher-gpt2-1.5B)
+
 #### SFT Baselines
 ```bash
 bash scripts/gpt2/sft/sft_base.sh /PATH_TO/LMOps/minillm
@@ -133,12 +136,22 @@ bash scripts/gpt2/sft/sft_medium.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/sft/sft_large.sh /PATH_TO/LMOps/minillm
 ```
 
+The SFT models
++ [SFT-gpt2-base](https://huggingface.co/MiniLLM/SFT-gpt2-120M)
++ [SFT-gpt2-medium](https://huggingface.co/MiniLLM/SFT-gpt2-340M)
++ [SFT-gpt2-large](https://huggingface.co/MiniLLM/SFT-gpt2-760M)
+
 #### KD Baselines
 ```bash
 bash scripts/gpt2/kd/kd_base.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/kd/kd_medium.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/kd/kd_large.sh /PATH_TO/LMOps/minillm
 ```
+
+The KD models
++ [KD-gpt2-base](https://huggingface.co/MiniLLM/KD-gpt2-120M)
++ [KD-gpt2-medium](https://huggingface.co/MiniLLM/KD-gpt2-340M)
++ [KD-gpt2-large](https://huggingface.co/MiniLLM/KD-gpt2-760M)
 
 #### SeqKD Baselines
 Generate and process responses with the teacher:
@@ -153,16 +166,27 @@ bash scripts/gpt2/seqkd/seqkd_medium.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/seqkd/seqkd_large.sh /PATH_TO/LMOps/minillm
 ```
 
+The SeqKD models
++ [SeqKD-gpt2-base](https://huggingface.co/MiniLLM/SeqKD-gpt2-120M)
++ [SeqKD-gpt2-medium](https://huggingface.co/MiniLLM/SeqKD-gpt2-340M)
++ [SeqKD-gpt2-large](https://huggingface.co/MiniLLM/SeqKD-gpt2-760M)
+
+
 ### 5.2 MiniLLM
 #### Initial Checkpoints
-The final checkpoints are selected by the **validation loss**.
+We first conduct SFT on base models to get a better initialization for the following RL-based MiniLLM training.
+
 ```bash
 bash scripts/gpt2/sft/sft_base.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/sft/sft_medium.sh /PATH_TO/LMOps/minillm
 bash scripts/gpt2/sft/sft_large.sh /PATH_TO/LMOps/minillm
 ```
+The final checkpoints are selected by the **validation loss**. The trained checkpoints:
++ [init-gpt2-base](https://huggingface.co/MiniLLM/init-gpt2-120M)
++ [init-gpt2-medium](https://huggingface.co/MiniLLM/init-gpt2-340M)
++ [init-gpt2-large](https://huggingface.co/MiniLLM/init-gpt2-760M)
 
-#### Train
+#### MiniLLM Training
 The final checkpoints are selected by the Rouge-L scores.
 ```bash
 bash scripts/gpt2/minillm/train_base_xl.sh /PATH_TO/LMOps/minillm
@@ -173,6 +197,12 @@ bash scripts/gpt2/minillm/train_large_xl.sh /PATH_TO/LMOps/minillm
 For the data we use:
 + `PROMPT_DATA_DIR` is the SFT data ($\mathcal{D}$, Dolly), which is required.
 + `LM_DATA_DIR` is the plain-text corpus ($\mathcal{D}_\text{PT}$), which is optional. See `minillm/scripts/gpt2/minillm/train_base_xl_no_pt.sh` for training without `LM_DATA_DIR` (by just commenting out the `OPTS+=" --lm-data-dir ${LM_DATA_DIR}"` line).
+
+The MiniLLM models
++ [MiniLLM-gpt2-base](https://huggingface.co/MiniLLM/MiniLLM-gpt2-120M)
++ [MiniLLM-gpt2-medium](https://huggingface.co/MiniLLM/MiniLLM-gpt2-340M)
++ [MiniLLM-gpt2-large](https://huggingface.co/MiniLLM/MiniLLM-gpt2-760M)
+
 
 ### 5.3 Multi-Node training
 Multi-Node training is launched by `deepspeed`. We provide an example script in `scripts/llama/sft/sft_7B_mn.sh` for multi-node training. Compared to single-node scripts, some of the `DISTRIBUTED_ARGS` are changed, and you need to specify a hostfile like `configs/hostfiles/node_0_1` to tell the script which nodes to use. For more information, please refer to HuggingFace's [tutorial](https://huggingface.co/docs/transformers/main_classes/deepspeed#the-deepspeed-launcher).
