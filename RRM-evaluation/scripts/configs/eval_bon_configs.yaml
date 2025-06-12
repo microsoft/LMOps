@@ -1,0 +1,67 @@
+# This file contains default evaluation parameters assuming access to a single A100-80GB
+openbmb/UltraRM-13b:
+  model: 'openbmb/UltraRM-13b'
+  tokenizer: 'openbmb/UltraRM-13b'
+  chat_template: 'openbmb'
+  batch_size: 8
+  trust_remote_code: False
+OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5:
+  model: 'OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5'
+  tokenizer: 'OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5'
+  chat_template: 'oasst_pythia'
+  batch_size: 64
+  trust_remote_code: False
+OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1:
+  model: 'OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1'
+  tokenizer: 'OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1'
+  chat_template: 'oasst_pythia'
+  batch_size: 64
+  trust_remote_code: False
+OpenAssistant/reward-model-deberta-v3-large-v2:
+  model: 'OpenAssistant/reward-model-deberta-v3-large-v2'
+  tokenizer: 'OpenAssistant/reward-model-deberta-v3-large-v2'
+  chat_template: 'raw'
+  batch_size: 64
+  trust_remote_code: False
+weqweasdas/hh_rlhf_rm_open_llama_3b:
+  model: 'weqweasdas/hh_rlhf_rm_open_llama_3b'
+  tokenizer: 'weqweasdas/hh_rlhf_rm_open_llama_3b'
+  chat_template: 'Robin'
+  batch_size: 64
+  trust_remote_code: False
+# llm-blender/PairRM-hf: # not yet supported
+#   model: 'llm-blender/PairRM-hf'
+#   tokenizer: 'llm-blender/PairRM-hf'
+#   chat_template: 'tulu'
+#   batch_size: 64
+#   trust_remote_code: False
+berkeley-nest/Starling-RM-7B-alpha:
+  model: 'berkeley-nest/Starling-RM-7B-alpha'
+  tokenizer: 'meta-llama/Llama-2-7b-chat-hf'
+  chat_template: 'llama-2'
+  batch_size: 16
+  trust_remote_code: False
+# stanfordnlp/SteamSHP-flan-t5-xl: # not yet supported
+#   model: 'stanfordnlp/SteamSHP-flan-t5-xl'
+#   tokenizer: 'stanfordnlp/SteamSHP-flan-t5-xl'
+#   chat_template: 'tulu'
+#   batch_size: 32
+#   trust_remote_code: False
+PKU-Alignment/beaver-7b-v1.0-reward:
+  model: 'PKU-Alignment/beaver-7b-v1.0-reward'
+  tokenizer: 'PKU-Alignment/beaver-7b-v1.0-reward'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+PKU-Alignment/beaver-7b-v1.0-cost:
+  model: 'PKU-Alignment/beaver-7b-v1.0-cost'
+  tokenizer: 'PKU-Alignment/beaver-7b-v1.0-cost'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+IDEA-CCNL/Ziya-LLaMA-7B-Reward:
+  model: 'IDEA-CCNL/Ziya-LLaMA-7B-Reward'
+  tokenizer: 'IDEA-CCNL/Ziya-LLaMA-7B-Reward'
+  chat_template: 'Ziya'
+  batch_size: 32
+  trust_remote_code: True

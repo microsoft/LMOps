@@ -1,0 +1,48 @@
+version: v2
+description: rewardbench-eval-default
+budget: ai2/allennlp
+tasks:
+  - name: rewardbench-eval-default
+    image:
+      beaker: <image>
+    command: [
+      '/bin/sh', '-c'
+    ]
+    arguments: [
+      'python scripts/run_rm.py
+      --model <MODEL>
+      --tokenizer <MODEL>
+      --chat_template tulu
+      --batch_size 64
+      --direct_load
+      --do_not_save'
+      # --use_slow_tokenizer # TODO: may have to use this when training Llama models
+    ]
+    envVars:
+      - name: CUDA_DEVICE_ORDER
+        value: PCI_BUS_ID
+      - name: TRANSFORMERS_CACHE
+        value: ./cache/
+      - name: WANDB_PROJECT
+        value: rewardbench
+      - name: WANDB_WATCH
+        value: false
+      - name: WANDB_LOG_MODEL
+        value: false
+      - name: WANDB_DISABLED
+        value: true
+      - name: HF_TOKEN
+        secret: HF_TOKEN
+    datasets:
+      - mountPath: /net/nfs.cirrascale
+        source:
+          hostPath: /net/nfs.cirrascale
+    result:
+      # Beaker will capture anything that's written to this location and store it in the results
+      # dataset.
+      path: /output
+    resources:
+      gpuCount: 1
+    context:
+      cluster: ai2/general-cirrascale
+      priority: high
