@@ -1,0 +1,894 @@
+# This file contains default evaluation parameters assuming access to a single A100-80GB
+openbmb/UltraRM-13b:
+  model: 'openbmb/UltraRM-13b'
+  tokenizer: 'openbmb/UltraRM-13b'
+  chat_template: 'openbmb'
+  batch_size: 8
+  trust_remote_code: False
+  dpo: False
+OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5:
+  model: 'OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5'
+  tokenizer: 'OpenAssistant/oasst-rm-2.1-pythia-1.4b-epoch-2.5'
+  chat_template: 'oasst_pythia'
+  batch_size: 64
+  trust_remote_code: False
+  dpo: False
+OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1:
+  model: 'OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1'
+  tokenizer: 'OpenAssistant/oasst-rm-2-pythia-6.9b-epoch-1'
+  chat_template: 'oasst_pythia'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+OpenAssistant/reward-model-deberta-v3-large-v2:
+  model: 'OpenAssistant/reward-model-deberta-v3-large-v2'
+  tokenizer: 'OpenAssistant/reward-model-deberta-v3-large-v2'
+  chat_template: 'raw'
+  batch_size: 64
+  trust_remote_code: False
+  dpo: False
+weqweasdas/hh_rlhf_rm_open_llama_3b:
+  model: 'weqweasdas/hh_rlhf_rm_open_llama_3b'
+  tokenizer: 'weqweasdas/hh_rlhf_rm_open_llama_3b'
+  chat_template: 'Robin'
+  batch_size: 64
+  trust_remote_code: False
+  dpo: False
+llm-blender/PairRM-hf:
+  model: 'llm-blender/PairRM-hf'
+  tokenizer: 'llm-blender/PairRM-hf'
+  chat_template: 'tulu'
+  batch_size: 64
+  trust_remote_code: False
+  dpo: False
+mightbe/Better-PairRM:
+  model: 'mightbe/Better-PairRM'
+  tokenizer: 'mightbe/Better-PairRM'
+  chat_template: 'tulu'
+  batch_size: 64
+  max_length: 3370
+  trust_remote_code: False
+  dpo: False
+berkeley-nest/Starling-RM-7B-alpha:
+  model: 'berkeley-nest/Starling-RM-7B-alpha'
+  tokenizer: 'meta-llama/Llama-2-7b-chat-hf'
+  chat_template: 'llama-2'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+stanfordnlp/SteamSHP-flan-t5-xl:
+  model: 'stanfordnlp/SteamSHP-flan-t5-xl'
+  tokenizer: 'stanfordnlp/SteamSHP-flan-t5-xl'
+  chat_template: 'tulu'
+  batch_size: 32
+  trust_remote_code: False
+  dpo: False
+stanfordnlp/SteamSHP-flan-t5-large:
+  model: 'stanfordnlp/SteamSHP-flan-t5-large'
+  tokenizer: 'stanfordnlp/SteamSHP-flan-t5-large'
+  chat_template: 'tulu'
+  batch_size: 32
+  trust_remote_code: False
+  dpo: False
+PKU-Alignment/beaver-7b-v1.0-reward:
+  model: 'PKU-Alignment/beaver-7b-v1.0-reward'
+  tokenizer: 'PKU-Alignment/beaver-7b-v1.0-reward'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+PKU-Alignment/beaver-7b-v1.0-cost:
+  model: 'PKU-Alignment/beaver-7b-v1.0-cost'
+  tokenizer: 'PKU-Alignment/beaver-7b-v1.0-cost'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+IDEA-CCNL/Ziya-LLaMA-7B-Reward:
+  model: 'IDEA-CCNL/Ziya-LLaMA-7B-Reward'
+  tokenizer: 'IDEA-CCNL/Ziya-LLaMA-7B-Reward'
+  chat_template: 'Ziya'
+  batch_size: 16
+  trust_remote_code: True
+  dpo: False
+Nexusflow/Starling-RM-34B:
+  model: 'Nexusflow/Starling-RM-34B'
+  tokenizer: '01-ai/Yi-34B-Chat'
+  chat_template: 'Yi-34b-chat'
+  num_gpus: 2
+  batch_size: 2
+  trust_remote_code: False
+  dpo: False
+stabilityai/stablelm-zephyr-3b:
+  ref_model: stabilityai/stablelm-3b-4e1t
+  tokenizer: stabilityai/stablelm-zephyr-3b
+  chat_template:
+  batch_size: 12
+  trust_remote_code: False
+  dpo: True
+stabilityai/stablelm-2-zephyr-1_6b:
+  ref_model: stabilityai/stablelm-2-1_6b
+  tokenizer: stabilityai/stablelm-2-zephyr-1_6b
+  chat_template:
+  batch_size: 6
+  trust_remote_code: True
+  dpo: True
+HuggingFaceH4/zephyr-7b-beta:
+  ref_model: HuggingFaceH4/mistral-7b-sft-beta
+  tokenizer: HuggingFaceH4/zephyr-7b-beta
+  chat_template:
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+HuggingFaceH4/zephyr-7b-alpha:
+  ref_model: HuggingFaceH4/mistral-7b-sft-alpha
+  tokenizer: HuggingFaceH4/zephyr-7b-alpha
+  chat_template:
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-0.5B-Chat:
+  ref_model: Qwen/Qwen1.5-0.5B
+  tokenizer: Qwen/Qwen1.5-0.5B-Chat
+  chat_template:
+  batch_size: 6
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-1.8B-Chat:
+  ref_model: Qwen/Qwen1.5-1.8B
+  tokenizer: Qwen/Qwen1.5-1.8B-Chat
+  chat_template:
+  batch_size: 3
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-4B-Chat:
+  ref_model: Qwen/Qwen1.5-4B
+  tokenizer: Qwen/Qwen1.5-4B-Chat
+  chat_template:
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-7B-Chat:
+  ref_model: Qwen/Qwen1.5-7B
+  tokenizer: Qwen/Qwen1.5-7B-Chat
+  chat_template:
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-14B-Chat:
+  ref_model: Qwen/Qwen1.5-14B
+  tokenizer: Qwen/Qwen1.5-14B-Chat
+  chat_template:
+  batch_size: 2
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+Qwen/Qwen1.5-72B-Chat:
+  ref_model: Qwen/Qwen1.5-72B
+  tokenizer: Qwen/Qwen1.5-72B-Chat
+  chat_template:
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+mistralai/Mixtral-8x7B-Instruct-v0.1:
+  ref_model: mistralai/Mixtral-8x7B-v0.1
+  tokenizer: mistralai/Mixtral-8x7B-Instruct-v0.1
+  chat_template:
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO:
+  ref_model: NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT
+  tokenizer: NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO
+  chat_template:
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: True
+  dpo: True
+NousResearch/Nous-Hermes-2-Mistral-7B-DPO:
+  ref_model: teknium/OpenHermes-2.5-Mistral-7B
+  tokenizer: NousResearch/Nous-Hermes-2-Mistral-7B-DPO
+  chat_template:
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+HuggingFaceH4/zephyr-7b-gemma-v0.1:
+  ref_model: HuggingFaceH4/zephyr-7b-gemma-sft-v0.1
+  tokenizer: HuggingFaceH4/zephyr-7b-gemma-v0.1
+  chat_template:
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+allenai/tulu-2-dpo-70b:
+  ref_model: allenai/tulu-2-70b
+  tokenizer: allenai/tulu-2-dpo-70b
+  chat_template: tulu
+  num_gpus: 4
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+allenai/tulu-2-dpo-13b:
+  ref_model: allenai/tulu-2-13b
+  tokenizer: allenai/tulu-2-dpo-13b
+  chat_template: tulu
+  num_gpus: 2
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+allenai/tulu-2-dpo-7b:
+  ref_model: allenai/tulu-2-7b
+  tokenizer: allenai/tulu-2-dpo-7b
+  chat_template: tulu
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+allenai/OLMo-7B-Instruct:
+  ref_model: allenai/OLMo-7B-SFT
+  tokenizer: allenai/OLMo-7B-Instruct
+  chat_template:
+  batch_size: 2
+  trust_remote_code: True
+  dpo: True
+# Added March 21st 2024
+weqweasdas/RM-Gemma-2B:
+  model: weqweasdas/RM-Gemma-2B
+  tokenizer: weqweasdas/RM-Gemma-2B
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+weqweasdas/RM-Gemma-7B:
+  model: weqweasdas/RM-Gemma-7B
+  tokenizer: weqweasdas/RM-Gemma-7B
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+weqweasdas/RM-Gemma-7B-4096:
+  model: weqweasdas/RM-Gemma-7B-4096
+  tokenizer: weqweasdas/RM-Gemma-7B-4096
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+Ray2333/reward-model-Mistral-7B-instruct-Unified-Feedback:
+  model: Ray2333/reward-model-Mistral-7B-instruct-Unified-Feedback
+  tokenizer: Ray2333/reward-model-Mistral-7B-instruct-Unified-Feedback
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+hendrydong/Mistral-RM-for-RAFT-GSHF-v0:
+  model: hendrydong/Mistral-RM-for-RAFT-GSHF-v0
+  tokenizer: hendrydong/Mistral-RM-for-RAFT-GSHF-v0
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+weqweasdas/RM-Mistral-7B:
+  model: weqweasdas/RM-Mistral-7B
+  tokenizer: weqweasdas/RM-Mistral-7B
+  chat_template: # empty for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+# Added March 25th 2024 KTO / Archangel models follow
+ContextualAI/archangel_sft-kto_llama7b:
+  model: ContextualAI/archangel_sft-kto_llama7b
+  ref_model: ContextualAI/archangel_sft_llama7b
+  tokenizer: ContextualAI/archangel_sft-kto_llama7b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_llama7b:
+  model: ContextualAI/archangel_sft-dpo_llama7b
+  ref_model: ContextualAI/archangel_sft_llama7b
+  tokenizer: ContextualAI/archangel_sft-dpo_llama7b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_llama13b:
+  model: ContextualAI/archangel_sft-kto_llama13b
+  ref_model: ContextualAI/archangel_sft_llama13b
+  tokenizer: ContextualAI/archangel_sft-kto_llama13b
+  chat_template: tulu
+  batch_size: 2
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_llama13b:
+  model: ContextualAI/archangel_sft-dpo_llama13b
+  ref_model: ContextualAI/archangel_sft_llama13b
+  tokenizer: ContextualAI/archangel_sft-dpo_llama13b
+  chat_template: tulu
+  batch_size: 2
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_llama30b:
+  model: ContextualAI/archangel_sft-kto_llama30b
+  ref_model: ContextualAI/archangel_sft_llama30b
+  tokenizer: ContextualAI/archangel_sft-kto_llama30b
+  chat_template: tulu
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_llama30b:
+  model: ContextualAI/archangel_sft-dpo_llama30b
+  ref_model: ContextualAI/archangel_sft_llama30b
+  tokenizer: ContextualAI/archangel_sft-dpo_llama30b
+  chat_template: tulu
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_pythia1-4b:
+  model: ContextualAI/archangel_sft-dpo_pythia1-4b
+  ref_model: ContextualAI/archangel_sft_pythia1-4b
+  tokenizer: ContextualAI/archangel_sft-dpo_pythia1-4b
+  chat_template: tulu
+  batch_size: 6
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_pythia1-4b:
+  model: ContextualAI/archangel_sft-kto_pythia1-4b
+  ref_model: ContextualAI/archangel_sft_pythia1-4b
+  tokenizer: ContextualAI/archangel_sft-kto_pythia1-4b
+  chat_template: tulu
+  batch_size: 6
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_pythia2-8b:
+  model: ContextualAI/archangel_sft-dpo_pythia2-8b
+  ref_model: ContextualAI/archangel_sft_pythia2-8b
+  tokenizer: ContextualAI/archangel_sft-dpo_pythia2-8b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_pythia2-8b:
+  model: ContextualAI/archangel_sft-kto_pythia2-8b
+  ref_model: ContextualAI/archangel_sft_pythia2-8b
+  tokenizer: ContextualAI/archangel_sft-kto_pythia2-8b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_pythia6-9b:
+  model: ContextualAI/archangel_sft-dpo_pythia6-9b
+  ref_model: ContextualAI/archangel_sft_pythia6-9b
+  tokenizer: ContextualAI/archangel_sft-dpo_pythia6-9b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_pythia6-9b:
+  model: ContextualAI/archangel_sft-kto_pythia6-9b
+  ref_model: ContextualAI/archangel_sft_pythia6-9b
+  tokenizer: ContextualAI/archangel_sft-kto_pythia6-9b
+  chat_template: tulu
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-dpo_pythia12-0b:
+  model: ContextualAI/archangel_sft-dpo_pythia12-0b
+  ref_model: ContextualAI/archangel_sft_pythia12-0b
+  tokenizer: ContextualAI/archangel_sft-dpo_pythia12-0b
+  chat_template: tulu
+  batch_size: 4
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+ContextualAI/archangel_sft-kto_pythia12-0b:
+  model: ContextualAI/archangel_sft-kto_pythia12-0b
+  ref_model: ContextualAI/archangel_sft_pythia12-0b
+  tokenizer: ContextualAI/archangel_sft-kto_pythia12-0b
+  chat_template: tulu
+  batch_size: 4
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+0-hero/Matter-0.1-7B-DPO-preview:
+  model: 0-hero/Matter-0.1-7B-DPO-preview
+  ref_model: 0-hero/Matter-0.1-7B
+  tokenizer: 0-hero/Matter-0.1-7B-DPO-preview
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+0-hero/Matter-0.1-7B-boost-DPO-preview:
+  model: 0-hero/Matter-0.1-7B-boost-DPO-preview
+  ref_model: 0-hero/Matter-0.1-7B-boost
+  tokenizer: 0-hero/Matter-0.1-7B-boost-DPO-preview
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: True
+openbmb/Eurus-RM-7b:
+  model: openbmb/Eurus-RM-7b
+  tokenizer: openbmb/Eurus-RM-7b
+  chat_template: mistral
+  batch_size: 16
+  trust_remote_code: True
+  dpo: False
+openbmb/Eurus-7b-kto:
+  model: openbmb/Eurus-7b-kto
+  ref_model: openbmb/Eurus-7b-sft
+  tokenizer: openbmb/Eurus-7b-kto
+  chat_template: mistral
+  batch_size: 4
+  trust_remote_code: True
+  dpo: True
+Qwen/Qwen1.5-MoE-A2.7B-Chat:
+  model: Qwen/Qwen1.5-MoE-A2.7B-Chat
+  ref_model: Qwen/Qwen1.5-MoE-A2.7B
+  tokenizer: Qwen/Qwen1.5-MoE-A2.7B-Chat
+  chat_template: # none for tokenizer
+  num_gpus: 2
+  batch_size: 3
+  trust_remote_code: False
+  dpo: True
+stabilityai/stable-code-instruct-3b:
+  model: stabilityai/stable-code-instruct-3b
+  ref_model: stabilityai/stable-code-3b
+  tokenizer: stabilityai/stable-code-instruct-3b
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: True
+  dpo: True
+HuggingFaceH4/starchat2-15b-v0.1:
+  model: HuggingFaceH4/starchat2-15b-v0.1
+  ref_model: HuggingFaceH4/starchat2-15b-sft-v0.1
+  tokenizer: HuggingFaceH4/starchat2-15b-v0.1
+  chat_template: # none for tokenizer
+  batch_size: 4
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+stabilityai/stablelm-2-12b-chat:
+  model: stabilityai/stablelm-2-12b-chat
+  ref_model: stabilityai/stablelm-2-12b
+  tokenizer: stabilityai/stablelm-2-12b-chat
+  chat_template: # none for tokenizer
+  batch_size: 4
+  num_gpus: 2
+  trust_remote_code: True
+  dpo: True
+upstage/SOLAR-10.7B-Instruct-v1.0:
+  model: upstage/SOLAR-10.7B-Instruct-v1.0
+  ref_model: upstage/SOLAR-10.7B-v1.0
+  tokenizer: upstage/SOLAR-10.7B-Instruct-v1.0
+  chat_template: # none for tokenizer
+  batch_size: 4
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+jondurbin/bagel-dpo-34b-v0.5:
+  model: jondurbin/bagel-dpo-34b-v0.5
+  ref_model: jondurbin/bagel-34b-v0.5
+  tokenizer: jondurbin/bagel-dpo-34b-v0.5
+  chat_template: # none for tokenizer
+  batch_size: 2
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+openbmb/MiniCPM-2B-dpo-fp32:
+  model: openbmb/MiniCPM-2B-dpo-fp32
+  ref_model: openbmb/MiniCPM-2B-sft-fp32
+  tokenizer: openbmb/MiniCPM-2B-dpo-fp32
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: True
+  dpo: True
+# Note: way not want to re-run generative models all the time
+# meta-llama/Meta-Llama-3-8B-Instruct:
+#   model: meta-llama/Meta-Llama-3-8B-Instruct
+#   tokenizer: meta-llama/Meta-Llama-3-8B-Instruct
+#   chat_template: # none for tokenizer
+#   trust_remote_code: False
+#   num_gpus: 1
+#   generative: True
+#   dpo: False
+# meta-llama/Meta-Llama-3-70B-Instruct:
+#   model: meta-llama/Meta-Llama-3-70B-Instruct
+#   tokenizer: meta-llama/Meta-Llama-3-70B-Instruct
+#   chat_template: # none for tokenizer
+#   trust_remote_code: False
+#   num_gpus: 4
+#   generative: True
+#   dpo: False
+# CohereForAI/c4ai-command-r-plus:
+#   model: CohereForAI/c4ai-command-r-plus
+#   tokenizer: CohereForAI/c4ai-command-r-plus
+#   chat_template: # none for tokenizer
+#   trust_remote_code: False
+#   num_gpus: 4
+#   generative: True
+#   dpo: False
+# End generative reward models
+sfairXC/FsfairX-LLaMA3-RM-v0.1:
+  model: sfairXC/FsfairX-LLaMA3-RM-v0.1
+  tokenizer: sfairXC/FsfairX-LLaMA3-RM-v0.1
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+  torch_dtype: bfloat16
+RLHFlow/pair-preference-model-LLaMA3-8B:
+  model: RLHFlow/pair-preference-model-LLaMA3-8B
+  tokenizer: RLHFlow/pair-preference-model-LLaMA3-8B
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+RLHFlow/RewardModel-Mistral-7B-for-DPA-v1:
+  model: RLHFlow/RewardModel-Mistral-7B-for-DPA-v1
+  tokenizer: RLHFlow/RewardModel-Mistral-7B-for-DPA-v1
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: True
+  dpo: False
+RLHFlow/LLaMA3-iterative-DPO-final:
+  model: RLHFlow/LLaMA3-iterative-DPO-final
+  ref_model: RLHFlow/LLaMA3-SFT
+  tokenizer: RLHFlow/LLaMA3-iterative-DPO-final
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  num_gpus: 2
+  dpo: True
+RLHFlow/ArmoRM-Llama3-8B-v0.1:
+  model: RLHFlow/ArmoRM-Llama3-8B-v0.1
+  tokenizer: RLHFlow/ArmoRM-Llama3-8B-v0.1
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: True
+  dpo: False
+PKU-Alignment/beaver-7b-v2.0-reward:
+  model: 'PKU-Alignment/beaver-7b-v2.0-reward'
+  tokenizer: 'PKU-Alignment/beaver-7b-v2.0-reward'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+PKU-Alignment/beaver-7b-v2.0-cost:
+  model: 'PKU-Alignment/beaver-7b-v2.0-cost'
+  tokenizer: 'PKU-Alignment/beaver-7b-v2.0-cost'
+  chat_template: 'pku-align'
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+# Tulu 2.5 RMs
+allenai/tulu-v2.5-13b-uf-rm:
+  model: allenai/tulu-v2.5-13b-uf-rm
+  tokenizer: allenai/tulu-v2.5-13b-uf-rm
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+allenai/tulu-v2.5-13b-preference-mix-rm:
+  model: allenai/tulu-v2.5-13b-preference-mix-rm
+  tokenizer: allenai/tulu-v2.5-13b-preference-mix-rm
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+allenai/tulu-v2.5-70b-uf-rm:
+  model: allenai/tulu-v2.5-70b-uf-rm
+  tokenizer: allenai/tulu-v2.5-70b-uf-rm
+  chat_template: # none for tokenizer
+  batch_size: 2
+  trust_remote_code: False
+  dpo: False
+allenai/tulu-v2.5-70b-preference-mix-rm:
+  model: allenai/tulu-v2.5-70b-preference-mix-rm
+  tokenizer: allenai/tulu-v2.5-70b-preference-mix-rm
+  chat_template: # none for tokenizer
+  batch_size: 2
+  trust_remote_code: False
+  dpo: False
+allenai/llama-3-tulu-2-70b-uf-mean-rm:
+  model: allenai/llama-3-tulu-2-70b-uf-mean-rm
+  tokenizer: allenai/llama-3-tulu-2-70b-uf-mean-rm
+  chat_template: # none for tokenizer
+  batch_size: 2
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: False
+allenai/llama-3-tulu-2-8b-uf-mean-rm:
+  model: allenai/llama-3-tulu-2-8b-uf-mean-rm
+  tokenizer: allenai/llama-3-tulu-2-8b-uf-mean-rm
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+Ahjeong/MMPO_Gemma_7b:
+  model: Ahjeong/MMPO_Gemma_7b
+  ref_model: kykim0/gemma-7b-ultrachat-sft
+  tokenizer: Ahjeong/MMPO_Gemma_7b
+  chat_template: # none for tokenizer
+  num_gpus: 2
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+Ahjeong/MMPO_Gemma_7b_gamma1.1_epoch3:
+  model: Ahjeong/MMPO_Gemma_7b_gamma1.1_epoch3
+  ref_model: kykim0/gemma-7b-ultrachat-sft
+  tokenizer: Ahjeong/MMPO_Gemma_7b_gamma1.1_epoch3
+  chat_template: # none for tokenizer
+  num_gpus: 2
+  batch_size: 2
+  trust_remote_code: False
+  dpo: True
+  torch_dtype: bfloat16
+wenbopan/Faro-Yi-9B-DPO:
+  model: wenbopan/Faro-Yi-9B-DPO
+  ref_model: wenbopan/Faro-Yi-9B
+  tokenizer: wenbopan/Faro-Yi-9B-DPO
+  chat_template: # none for tokenizer
+  batch_size: 2
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+allenai/llama-3-tulu-2-dpo-8b:
+  model: allenai/llama-3-tulu-2-dpo-8b
+  ref_model: allenai/llama-3-tulu-2-8b
+  tokenizer: allenai/llama-3-tulu-2-dpo-8b
+  chat_template: # none for tokenizer
+  batch_size: 1
+  num_gpus: 2
+  trust_remote_code: False
+  dpo: True
+allenai/llama-3-tulu-2-dpo-70b:
+  model: allenai/llama-3-tulu-2-dpo-70b
+  ref_model: allenai/llama-3-tulu-2-70b
+  tokenizer: allenai/llama-3-tulu-2-dpo-70b
+  chat_template: # none for tokenizer
+  batch_size: 1
+  num_gpus: 4
+  trust_remote_code: False
+  dpo: True
+Ray2333/GRM-llama3-8B-distill:
+  model: Ray2333/GRM-llama3-8B-distill
+  tokenizer: Ray2333/GRM-llama3-8B-distill
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+Ray2333/Gemma-2B-rewardmodel-baseline:
+  model: Ray2333/Gemma-2B-rewardmodel-baseline
+  tokenizer: Ray2333/Gemma-2B-rewardmodel-baseline
+  chat_template: # none for tokenizer
+  batch_size: 8
+  trust_remote_code: False
+  dpo: False
+Ray2333/GRM-llama3-8B-sftreg:
+  model: Ray2333/GRM-llama3-8B-sftreg
+  tokenizer: Ray2333/GRM-llama3-8B-sftreg
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+Ray2333/GRM-Gemma-2B-sftreg:
+  model: Ray2333/GRM-Gemma-2B-sftreg
+  tokenizer: Ray2333/GRM-Gemma-2B-sftreg
+  chat_template: # none for tokenizer
+  batch_size: 8
+  trust_remote_code: False
+  dpo: False
+CIR-AMS/BTRM_Qwen2_7b_0613:
+  model: CIR-AMS/BTRM_Qwen2_7b_0613
+  tokenizer: CIR-AMS/BTRM_Qwen2_7b_0613
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: False
+  dpo: False
+  torch_dtype: bfloat16
+internlm/internlm2-1_8b-reward:
+  model: internlm/internlm2-1_8b-reward
+  tokenizer: internlm/internlm2-1_8b-reward
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: True
+  dpo: False
+internlm/internlm2-7b-reward:
+  model: internlm/internlm2-7b-reward
+  tokenizer: internlm/internlm2-7b-reward
+  chat_template: # none for tokenizer
+  batch_size: 4
+  trust_remote_code: True
+  dpo: False
+internlm/internlm2-20b-reward:
+  model: internlm/internlm2-20b-reward
+  tokenizer: internlm/internlm2-20b-reward
+  chat_template: # none for tokenizer
+  batch_size: 2
+  trust_remote_code: True
+  dpo: False
+NCSOFT/Llama-3-OffsetBias-RM-8B:
+  model: NCSOFT/Llama-3-OffsetBias-RM-8B
+  tokenizer: NCSOFT/Llama-3-OffsetBias-RM-8B
+  chat_template: # none for tokenizer
+  batch_size: 4
+  torch_dtype: bfloat16
+  dpo: False
+  trust_remote_code: False
+Skywork/Skywork-Reward-Gemma-2-27B:
+  model: Skywork/Skywork-Reward-Gemma-2-27B
+  tokenizer: Skywork/Skywork-Reward-Gemma-2-27B
+  chat_template: # none for tokenizer
+  batch_size: 2
+  dpo: False
+  torch_dtype: bfloat16
+  trust_remote_code: False
+  attention_implementation: flash_attention_2
+Skywork/Skywork-Reward-Llama-3.1-8B:
+  model: Skywork/Skywork-Reward-Llama-3.1-8B
+  tokenizer: Skywork/Skywork-Reward-Llama-3.1-8B
+  chat_template: # none for tokenizer
+  batch_size: 8
+  dpo: False
+  torch_dtype: bfloat16
+  trust_remote_code: False
+LxzGordon/URM-LLaMa-3.1-8B:
+  model: LxzGordon/URM-LLaMa-3.1-8B
+  tokenizer: LxzGordon/URM-LLaMa-3.1-8B
+  chat_template: # none for tokenizer
+  batch_size: 4
+  dpo: False
+  trust_remote_code: True
+  quantized: False
+LxzGordon/URM-LLaMa-3-8B:
+  model: LxzGordon/URM-LLaMa-3-8B
+  tokenizer: LxzGordon/URM-LLaMa-3-8B
+  chat_template: # none for tokenizer
+  batch_size: 4
+  dpo: False
+  trust_remote_code: True
+  quantized: False
+# Skywork/Skywork-Critic-Llama-3.1-8B:
+#   model: Skywork/Skywork-Critic-Llama-3.1-8B
+#   tokenizer: Skywork/Skywork-Critic-Llama-3.1-8B
+#   chat_template: # none for tokenizer
+#   batch_size: 4
+#   dpo: False
+#   generative: True
+#   num_gpus: 1
+Ray2333/GRM-Gemma-2B-rewardmodel-ft:
+  model: Ray2333/GRM-Gemma-2B-rewardmodel-ft
+  tokenizer: Ray2333/GRM-Gemma-2B-rewardmodel-ft
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+Ray2333/Gemma-2B-rewardmodel-ft:
+  model: Ray2333/Gemma-2B-rewardmodel-ft
+  tokenizer: Ray2333/Gemma-2B-rewardmodel-ft
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+Ray2333/GRM-Llama3-8B-rewardmodel-ft:
+  model: Ray2333/GRM-Llama3-8B-rewardmodel-ft
+  tokenizer: Ray2333/GRM-Llama3-8B-rewardmodel-ft
+  chat_template: # none for tokenizer
+  batch_size: 8
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+# for QRM models, use export ACCELERATE_MIXED_PRECISION=bf16; for best performance
+nicolinho/QRM-Llama3.1-8B:
+  model: nicolinho/QRM-Llama3.1-8B
+  tokenizer: nicolinho/QRM-Llama3.1-8B
+  chat_template: # none for tokenizer
+  batch_size: 8
+  dpo: False
+  trust_remote_code: True
+  quantized: False
+  attention_implementation: flash_attention_2
+nicolinho/QRM-Llama3-8B:
+  model: nicolinho/QRM-Llama3-8B
+  tokenizer: nicolinho/QRM-Llama3-8B
+  chat_template: # none for tokenizer
+  batch_size: 8
+  dpo: False
+  trust_remote_code: True
+  quantized: False
+  attention_implementation: flash_attention_2
+Skywork/Skywork-Reward-Gemma-2-27B-v0.2:
+  model: Skywork/Skywork-Reward-Gemma-2-27B-v0.2
+  tokenizer: Skywork/Skywork-Reward-Gemma-2-27B-v0.2
+  chat_template: # none for tokenizer
+  batch_size: 2
+  dpo: False
+  torch_dtype: bfloat16
+  trust_remote_code: False
+  attention_implementation: flash_attention_2
+  quantized: False
+Skywork/Skywork-Reward-Llama-3.1-8B-v0.2:
+  model: Skywork/Skywork-Reward-Llama-3.1-8B-v0.2
+  tokenizer: Skywork/Skywork-Reward-Llama-3.1-8B-v0.2
+  chat_template: # none for tokenizer
+  batch_size: 8
+  dpo: False
+  torch_dtype: bfloat16
+  trust_remote_code: False
+  quantized: False
+Ray2333/GRM-Gemma2-2B-sftreg:
+  model: Ray2333/GRM-Gemma2-2B-sftreg
+  tokenizer: Ray2333/GRM-Gemma2-2B-sftreg
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+Ray2333/GRM-llama3.2-3B-sftreg:
+  model: Ray2333/GRM-llama3.2-3B-sftreg
+  tokenizer: Ray2333/GRM-llama3.2-3B-sftreg
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+Ray2333/GRM-gemma2-2B-rewardmodel-ft:
+  model: Ray2333/GRM-gemma2-2B-rewardmodel-ft
+  tokenizer: Ray2333/GRM-gemma2-2B-rewardmodel-ft
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+Ray2333/GRM-llama3.2-3B-rewardmodel-ft:
+  model: Ray2333/GRM-llama3.2-3B-rewardmodel-ft
+  tokenizer: Ray2333/GRM-llama3.2-3B-rewardmodel-ft
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+infly/INF-ORM-Llama3.1-70B:
+  model: infly/INF-ORM-Llama3.1-70B
+  tokenizer: infly/INF-ORM-Llama3.1-70B
+  chat_template: # none for tokenizer
+  batch_size: 16
+  torch_dtype: bfloat16
+  attention_implementation: flash_attention_2
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+SultanR/SmolTulu-1.7b-RM:
+  model: SultanR/SmolTulu-1.7b-RM
+  tokenizer: SultanR/SmolTulu-1.7b-RM
+  chat_template: # none for tokenizer
+  batch_size: 16
+  trust_remote_code: False
+  dpo: False
+  quantized: False
+nicolinho/QRM-Gemma-2-27B:
+  model: nicolinho/QRM-Gemma-2-27B
+  tokenizer: nicolinho/QRM-Gemma-2-27B
+  chat_template: # none for tokenizer
+  batch_size: 1
+  torch_dtype: bfloat16
+  attention_implementation: flash_attention_2
+  max_length: 4096
+  quantized: False
+  dpo: False
+  trust_remote_code: True
+nicolinho/QRM-Llama3.1-8B-v2:
+  model: nicolinho/QRM-Llama3.1-8B-v2
+  tokenizer: nicolinho/QRM-Llama3.1-8B-v2
+  chat_template: # none for tokenizer
+  batch_size: 1
+  torch_dtype: bfloat16
+  attention_implementation: flash_attention_2
+  quantized: False
+  dpo: False
+  trust_remote_code: True
