@@ -2,6 +2,10 @@
 
 [paper](https://arxiv.org/abs/2306.08543) | [huggingface](https://huggingface.co/MiniLLM)
 
+## 🔥🔥 News
+- (🔥 New) MiniLLM is supported in HuggingFace [TRL](https://github.com/huggingface/trl/tree/main/trl/experimental/minillm). Checkout the [docs](https://huggingface.co/docs/trl/main/en/minillm).
+- MiniLLM's "minimizing reverse KLD by on-policy distillation" is introduced by [Thinking Machine Lab](https://thinkingmachines.ai/blog/on-policy-distillation/). Checkout their [implementation](https://github.com/thinking-machines-lab/tinker-cookbook/tree/main/tinker_cookbook/distillation).
+
 ![Method](./figures/method.png)
 
 ![Results](./figures/results.png)
