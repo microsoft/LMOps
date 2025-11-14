@@ -2,23 +2,27 @@
 
 This repository contains the implementation and resources for our paper **"Black-Box On-Policy Distillation of Large Language Models"**.
 
+📄 **Paper**: [arXiv:2511.10643](https://arxiv.org/abs/2511.10643)
+
 ## 📋 Todo List
 
 - [ ] **Code**: Will be provided before November 17, 2025
 - [ ] **Data**: Coming soon
 - [ ] **Model Checkpoint**: Coming soon
 
-<!-- ## 📄 Citation
+## 📄 Citation
 
 If you find this work useful, please cite our paper:
 
 ```bibtex
-@article{black-box-on-policy-distillation,
+@article{ye2025blackboxonpolicydistillationlarge,
   title={Black-Box On-Policy Distillation of Large Language Models},
-  author={},
-  year={2024}
+  author={Tianzhu Ye and Li Dong and Zewen Chi and Xun Wu and Shaohan Huang and Furu Wei},
+  journal={arXiv preprint arXiv:2511.10643},
+  year={2025},
+  url={https://arxiv.org/abs/2511.10643}
 }
-``` -->
+```
 
 ## 📧 Contact
 
