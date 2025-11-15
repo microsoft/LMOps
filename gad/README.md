@@ -7,8 +7,8 @@ This repository contains the implementation and resources for our paper **"Black
 ## 📋 Todo List
 
 - [x] **Code**: Provided
-- [ ] **Data**: Coming soon
-- [ ] **Model Checkpoint**: Coming soon
+- [ ] **Data**: Will be provided before November 30, 2025
+- [ ] **Model Checkpoint**: Will be provided before November 30, 2025
 
 ## 🚀 Getting Started
 
