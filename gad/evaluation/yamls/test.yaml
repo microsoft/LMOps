@@ -1,0 +1,62 @@
+description: bitnet
+
+target:
+  service: sing
+  name: msroctobasicvc
+  resource_group: gcr-singularity-octo
+  # workspace_name: Workspace_NLC
+  workspace_name: Workspace_NLC
+
+
+environment:
+  image: amlt-sing/acpt-2.3.1-py3.10-cuda12.1
+  setup:
+  - echo "master_addr:" "$$MASTER_ADDR"
+  - echo "master_port:" $$MASTER_PORT
+  - echo "node_rank:" $$OMPI_COMM_WORLD_RANK
+
+
+
+code:
+  local_dir: $CONFIG_DIR/..
+
+storage:
+  # lingjiejiang:
+  #   storage_account_name: msranlpintern
+  #   container_name: lingjiejiang
+  msranlp:
+    storage_account_name: msranlp
+    container_name: unilm
+
+search:
+  job_template:
+    name: PRJ-0349-A54-1_.58_-bit-LLMs-test-scaling
+    sku: 40G1
+    identity: managed
+    sla_tier: standard
+    command:
+    - bash setup.sh
+    - bash sh/task_eval.sh {promt} /mnt/msranlp/xun/reasoning/RL-Scale/results/RL_EXPLORE_EXP/{cpkt}/step_{model} /mnt/msranlp/xun/reasoning/RL-Scale/results/RL_EXPLORE_EXP/{cpkt}/step_{model} {task}
+    submit_args:
+      env:
+        {"SINGULARITY_MPI_ENV":"-mca pml ucx --mca btl ^vader,tcp,openib -x NCCL_SOCKET_IFNAME=bond0 -x NCCL_IB_HCA=mlx5_0,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_9,mlx5_10,mlx5_11 -x NCCL_DEBUG=INFO"}
+      # container_args:
+      #   shm_size: 256g
+    tags: [Project_Name:1.58-bit-LLMs, ProjectID:PRJ-0349-A54, Experiment:BitNet-scaling]
+
+  type: grid
+  max_trials: 500
+  params:
+    - name: promt
+      spec: discrete
+      values: ['qwen25-math-cot']
+    - name: model
+      spec: discrete
+      values: ['4']
+    - name: task
+      spec: discrete
+      values: ['gsm8k']
+    - name: cpkt
+      spec: discrete
+      values: ['GRPO-beta0.01-8k-temp0.6-localbsz128-baseline_checkpoints']
+
