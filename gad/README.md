@@ -4,10 +4,12 @@ This repository contains the implementation and resources for our paper **"Black
 
 📄 **Paper**: [arXiv:2511.10643](https://arxiv.org/abs/2511.10643)
 
+💾 **Data**: [LMSYS-Chat-GPT-5-Chat-Response](https://huggingface.co/datasets/ytz20/LMSYS-Chat-GPT-5-Chat-Response)
+
 ## 📋 Todo List
 
 - [x] **Code**: Provided
-- [ ] **Data**: Will be provided before November 30, 2025
+- [x] **Data**: Provided
 - [ ] **Model Checkpoint**: Will be provided before November 30, 2025
 
 ## 🚀 Getting Started
@@ -94,6 +96,8 @@ git checkout eval
 cd ..
 bash scripts/generate/parallel_generate.sh
 ```
+
+Then we use GPT-4o to generate reference answer and perform automatic score evaluation. **You can also use open-source models (like Qwen2.5-72B-Instruct) to generate reference answer and to score the outputs.**
 
 ## 📄 Citation
 
