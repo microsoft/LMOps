@@ -6,11 +6,7 @@ This repository contains the implementation and resources for our paper **"Black
 
 💾 **Data**: [LMSYS-Chat-GPT-5-Chat-Response](https://huggingface.co/datasets/ytz20/LMSYS-Chat-GPT-5-Chat-Response)
 
-## 📋 Todo List
-
-- [x] **Code**: Provided
-- [x] **Data**: Provided
-- [ ] **Model Checkpoint**: Will be provided before November 30, 2025
+🤖 **Models**: [GAD Models](https://huggingface.co/collections/ytz20/gad-models)
 
 ## 🚀 Getting Started
 
