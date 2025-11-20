@@ -12,7 +12,9 @@ This repository contains the implementation and resources for our paper **"Black
 
 ### Docker Environment
 
-We use `czwin32768/verl2:v0.2.0-vllm085` which has `vllm==0.8.5` as the recommended docker image.
+We use `czwin32768/verl2:v0.2.0-vllm085` which has `python==3.10.12, pytorch==2.6.0, vllm==0.8.5` as the recommended docker image. Note that the docker is not related to [VeRL](https://github.com/volcengine/verl); you can also setup a similar environment by your own. 
+
+We provide GAD VeRL implementation in `https://github.com/YTianZHU/verl.git`. Follow the Environment Setup section below to install it.
 
 ### Environment Setup
 
