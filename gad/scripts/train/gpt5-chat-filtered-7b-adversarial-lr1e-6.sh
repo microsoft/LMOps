@@ -47,8 +47,8 @@ ls /tmp/$EXP_NAME/global_step_$RESUME_STEP/critic/huggingface
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     data.prompt_key=content \
-    data.train_files=/tmp/lmsys_gpt5_chat_4k_filtered_train.parquet \
-    data.val_files=/tmp/lmsys_gpt5_chat_4k_filtered_test.parquet \
+    data.train_files=/tmp/lmsys_gpt5_chat_filtered_train.parquet \
+    data.val_files=/tmp/lmsys_gpt5_chat_filtered_test.parquet \
     data.train_batch_size=256 \
     data.val_batch_size=600 \
     data.max_prompt_length=2048 \
