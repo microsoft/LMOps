@@ -10,13 +10,11 @@ This repository contains the implementation and resources for our paper **"Black
 
 ## 🚀 Getting Started
 
-### Docker Environment
-
-We use `czwin32768/verl2:v0.2.0-vllm085` which has `python==3.10.12, pytorch==2.6.0, vllm==0.8.5` as the recommended docker image. Note that the docker is not related to [VeRL](https://github.com/volcengine/verl); you can also setup a similar environment by your own. 
-
-We provide GAD VeRL implementation in `https://github.com/YTianZHU/verl.git`. Follow the Environment Setup section below to install it.
-
 ### Environment Setup
+
+We use `czwin32768/verl2:v0.2.0-vllm085` which has `python==3.10.12, pytorch==2.6.0, vllm==0.8.5` as the recommended docker image in the code snippet below. Note that the docker is not related to [VeRL](https://github.com/volcengine/verl); you can also setup a similar environment by your own. 
+
+We use [VeRL](https://github.com/volcengine/verl) as the implementation codebase. GAD VeRL implementation is provided at `https://github.com/YTianZHU/verl.git` and installed in the code snippet below. **We hack the use of `critic` module as our discriminator**.
 
 ```bash
 bash local_docker.sh
@@ -27,10 +25,13 @@ git clone https://github.com/YTianZHU/verl.git
 bash local_setup.sh
 ```
 
-### Implementation
+### Data Preparation
 
-We use [VeRL](https://github.com/volcengine/verl) as the implementation codebase.
-**We hack the use of critic module as our discriminator**.
+We provide teacher data from GPT-5-Chat at [Teacher Data](https://huggingface.co/datasets/ytz20/LMSYS-Chat-GPT-5-Chat-Response). Use code below to download and prepare data. 
+
+```
+python tools/export_lmsys_parquet.py
+```
 
 ## 📦 Training
 
