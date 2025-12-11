@@ -8,13 +8,13 @@ This repository contains the implementation and resources for our paper **"Black
 
 🤖 **Models**: [GAD Models](https://huggingface.co/collections/ytz20/gad-models)
 
-## 🚀 Getting Started
+## 🚀 Getting Started 
 
 ### Environment Setup
 
 We use `czwin32768/verl2:v0.2.0-vllm085` which has `python==3.10.12, pytorch==2.6.0, vllm==0.8.5` as the recommended docker image in the code snippet below. Note that the docker is not related to [VeRL](https://github.com/volcengine/verl); you can also setup a similar environment by your own. 
 
-We use [VeRL](https://github.com/volcengine/verl) as the implementation codebase. GAD VeRL implementation is provided at `https://github.com/YTianZHU/verl.git` and installed in the code snippet below. **We hack the use of `critic` module as our discriminator**.
+We use two repos as to easily install different branches for different experiments. Check this repo for environment setup and scripts for running experiments. Check algorithm implementation at `https://github.com/YTianZHU/verl.git` and it is installed in the code snippet below. The algorithm implementation repo is based on [VeRL](https://github.com/volcengine/verl). **We hack the `critic` module to use it as our discriminator**.
 
 ```bash
 bash local_docker.sh
@@ -34,6 +34,10 @@ python tools/export_lmsys_parquet.py
 ```
 
 ## 📦 Training
+
+There are four branches in the installed GAD VeRL implementation repo: `seqkd` branch for running the SeqKD baseline, `warmup` branch for warmup stage of our method, `gad` branch for GAD training stage of our method and `eval` branch to use the already-trained model to perform generation only. We checkout to the corresponding branch before each experiment as shown in the scripts below.
+
+For SeqKD and warmup stage of GAD, the student is supervised-finetuned on the teacher response (corresponding code at [sft_seqkd](https://github.com/YTianZHU/verl/blob/seqkd/verl/workers/actor/dp_actor.py#L485) and [sft_warmup](https://github.com/YTianZHU/verl/blob/warmup/verl/workers/actor/dp_actor.py#L495)). We choose to use this VeRL-based repo to implement them for best alignment.
 
 ### Baseline: SeqKD
 
