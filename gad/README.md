@@ -43,6 +43,8 @@ There are four branches in the installed GAD VeRL implementation repo: `seqkd` b
 
 For SeqKD and warmup stage of GAD, the student is supervised-finetuned on the teacher response (corresponding code at [sft_seqkd](https://github.com/YTianZHU/verl/blob/seqkd/verl/workers/actor/dp_actor.py#L485) and [sft_warmup](https://github.com/YTianZHU/verl/blob/warmup/verl/workers/actor/dp_actor.py#L495)). We choose to use this VeRL-based repo to implement them for best alignment.
 
+During training, we log ROUGE-L scores. The ROUGE-L scores of GAD can be lower than those of SeqKD because ROUGE-L is a relatively local metric that primarily captures n-gram overlap rather than deeper stylistic or semantic qualities. **We observe that higher ROUGE-L scores do not necessarily correspond to better performance in either automatic or human evaluations. Consequently, ROUGE-L is used solely as a training diagnostic to verify that optimization is proceeding normally.**
+
 ### Baseline: SeqKD
 
 To run the baseline SeqKD:
