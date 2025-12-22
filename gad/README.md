@@ -33,11 +33,17 @@ We provide teacher data from GPT-5-Chat at [Teacher Data](https://huggingface.co
 python tools/export_lmsys_parquet.py
 ```
 
+### Code Guide
+
+The codebase is relatively complex. We provide detailed code walk-throughs in the README files on different branches at https://github.com/YTianZHU/verl.git.
+
 ## 📦 Training
 
 There are four branches in the installed GAD VeRL implementation repo: `seqkd` branch for running the SeqKD baseline, `warmup` branch for warmup stage of our method, `gad` branch for GAD training stage of our method and `eval` branch to use the already-trained model to perform generation only. We checkout to the corresponding branch before each experiment as shown in the scripts below.
 
 For SeqKD and warmup stage of GAD, the student is supervised-finetuned on the teacher response (corresponding code at [sft_seqkd](https://github.com/YTianZHU/verl/blob/seqkd/verl/workers/actor/dp_actor.py#L485) and [sft_warmup](https://github.com/YTianZHU/verl/blob/warmup/verl/workers/actor/dp_actor.py#L495)). We choose to use this VeRL-based repo to implement them for best alignment.
+
+During training, we log ROUGE-L scores. The ROUGE-L scores of GAD can be lower than those of SeqKD because ROUGE-L is a relatively local metric that primarily captures n-gram overlap rather than deeper stylistic or semantic qualities. **We observe that higher ROUGE-L scores do not necessarily correspond to better performance in either automatic or human evaluations. Consequently, ROUGE-L is used solely as a training diagnostic to verify that optimization is proceeding normally.**
 
 ### Baseline: SeqKD
 
