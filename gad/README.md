@@ -33,6 +33,10 @@ We provide teacher data from GPT-5-Chat at [Teacher Data](https://huggingface.co
 python tools/export_lmsys_parquet.py
 ```
 
+### Code Guide
+
+The codebase is relatively complex. We provide detailed code walk-throughs in the README files on different branches at https://github.com/YTianZHU/verl.git.
+
 ## 📦 Training
 
 There are four branches in the installed GAD VeRL implementation repo: `seqkd` branch for running the SeqKD baseline, `warmup` branch for warmup stage of our method, `gad` branch for GAD training stage of our method and `eval` branch to use the already-trained model to perform generation only. We checkout to the corresponding branch before each experiment as shown in the scripts below.
