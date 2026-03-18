@@ -2,6 +2,8 @@
 
 This repository contains the implementation for our paper **"Online Experiential Learning for Language Models"**.
 
+📄 **Paper**: [arXiv:2603.16856](https://arxiv.org/abs/2603.16856)
+
 The code is built on [VeRL](https://github.com/volcengine/verl). We provide online experiential learning code for two environments: Frozen Lake and Sokoban.
 
 [On-Policy Context Distillation](https://arxiv.org/abs/2602.12275) is our preceding work. We open-source its code at [OPCD-Code](https://github.com/microsoft/LMOps/tree/main/opcd), which includes mathematical reasoning, text-based game tasks for experiential knowledge distillation, and system prompt distillation. Off-policy context distillation is also implemented in that codebase. Feel free to refer to it if needed.
@@ -109,3 +111,22 @@ bash scripts/textgame_consolidate.sh --resume_policy_name oel-sokoban-q3-4b-ins-
 
 ### Frozen Lake, Qwen3-1.7B, Qwen3-4B, Qwen3-8B  (thinking model)
 See `usage_example.sh`.
+
+
+
+
+## 📄 Citation
+
+If you find this work useful, please cite our paper:
+
+```bibtex
+@article{ye2026onlineexperientiallearninglanguage,
+    title={Online Experiential Learning for Language Models}, 
+    author={Tianzhu Ye and Li Dong and Qingxiu Dong and Xun Wu and Shaohan Huang and Furu Wei},
+    year={2026},
+    eprint={2603.16856},
+    archivePrefix={arXiv},
+    primaryClass={cs.CL},
+    url={https://arxiv.org/abs/2603.16856}, 
+}
+```
