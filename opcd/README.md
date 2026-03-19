@@ -32,6 +32,12 @@ bash ray_node_setup.sh
 source .venv/bin/activate
 ```
 
+## 🧪 Data Preparation
+
+```bash
+python tools/prepare_data.py
+```
+
 ## 📦 Usage
 
 First login your wandb account:
