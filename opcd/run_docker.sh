@@ -1,0 +1,1 @@
+docker run --privileged --net=host --ipc=host --gpus=all --runtime=nvidia -v /home/:/home/ -w /tmp -it czwin32768/verl2:v0.2.0-vllm085
