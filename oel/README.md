@@ -32,6 +32,14 @@ bash ray_node_setup.sh
 source .venv/bin/activate
 ```
 
+## 📖 Code Walkthrough
+
+Main Entrance: [Ray Trainer](https://github.com/microsoft/LMOps/blob/main/oel/verl/verl/trainer/ppo/ray_trainer.py#L1589)
+
+Rollout: [Rollout](https://github.com/microsoft/LMOps/blob/main/oel/verl/verl/workers/rollout/vllm_rollout/vllm_rollout_spmd.py#L520) and [TextGame Rollout](https://github.com/microsoft/LMOps/blob/main/oel/verl/verl/workers/rollout/vllm_rollout/vllm_rollout_spmd.py#L682)
+
+Update Policy: [Update](https://github.com/microsoft/LMOps/blob/main/oel/verl/verl/workers/actor/dp_actor.py#L533) and [Reverse KL](https://github.com/microsoft/LMOps/blob/main/oel/verl/verl/trainer/ppo/core_algos.py#L831)
+
 ## 📦 Usage
 
 First login your wandb account:
