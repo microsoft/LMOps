@@ -12,7 +12,7 @@ from accelerate import load_checkpoint_and_dispatch, init_empty_weights
 
 try:
     from transformers import mpu
-except:
+except Exception:
     mpu = None
 
 WANDB_PROJ_NAME = "data_selection"
@@ -115,7 +115,7 @@ def initialize(args, do_distributed=True):
 
     set_random_seed(args.seed, args.model_parallel)
     # init save folder
-    if args.save != None:
+    if args.save is not None:
         os.makedirs(args.save, exist_ok=True)
         
         
