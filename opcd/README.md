@@ -146,6 +146,8 @@ bash scripts/textgame_train_offp.sh --model Qwen/Qwen3-1.7B --exp_name frozenlak
 
 ### System Prompt Distillation
 
+As noted in the OPCD paper, we report the test accuracy in the results section as the average over the three best-performing checkpoints to reduce variance.
+
 #### On-Policy Context Distillation
 
 Experiential knowledge consolidation
@@ -182,6 +184,31 @@ bash scripts/sys_eval_inturn.sh
 bash scripts/sys_generate_offp.sh.sh --model Qwen/Qwen2.5-7B-Instruct --exp_name sys-medmcqa-q25-7b-offp-data --nnodes 1 --rollout_n 1 --kl_loss_type full --kl_topk 256 --actor_lr 5e-6 --max_response_length 512 --experience_max_length 4096 --system_prompt_type medmcqa --exp_path system_prompts/medmcqa.txt   ;   bash scripts/sys_train_offp.sh --model Qwen/Qwen2.5-7B-Instruct --exp_name sys-medmcqa-q25-7b-offp --nnodes 1 --rollout_n 1 --kl_loss_type full --kl_topk 256 --actor_lr 5e-6 --max_response_length 512 --experience_max_length 4096 --system_prompt_type medmcqa --exp_path system_prompts/medmcqa.txt --off_policy_save_dir /tmp/sys-medmcqa-q25-7b-offp-data/off_policy_data --total_training_steps 50 --save_freq 2
 ```
 
+
+
+
+
+### Out-of-Distribution Task Evaluation (IF-Eval)
+
+```bash
+cd /tmp ; git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness ; cd lm-evaluation-harness ; pip install -e . ; pip install langdetect immutabledict ; pip install hf_transfer transformers==4.57.5
+
+huggingface-cli login --token ${YOUR_HF_TOKEN}
+
+HF_ALLOW_CODE_EVAL=1 lm_eval --model hf \
+    --model_args pretrained=${YOUR_MODEL_PATH},enable_thinking=False \
+    --tasks ifeval \
+    --batch_size auto \
+    --gen_kwargs temperature=0.7,top_p=0.8,top_k=20,min_p=0,do_sample=True \
+    --apply_chat_template \
+    --fewshot_as_multiturn \
+    --write_out \
+    --show_config \
+    --seed 42 \
+    --output_path ${YOUR_SAVE_PATH}$ \
+    --device cuda:0 \
+    --confirm_run_unsafe_code
+```
 
 
 ## 📄 Citation

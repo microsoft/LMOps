@@ -122,6 +122,28 @@ See `usage_example.sh`.
 
 
 
+### Out-of-Distribution Task Evaluation (IF-Eval)
+
+```bash
+cd /tmp ; git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness ; cd lm-evaluation-harness ; pip install -e . ; pip install langdetect immutabledict ; pip install hf_transfer transformers==4.57.5
+
+huggingface-cli login --token ${YOUR_HF_TOKEN}
+
+HF_ALLOW_CODE_EVAL=1 lm_eval --model hf \
+    --model_args pretrained=${YOUR_MODEL_PATH},enable_thinking=False \
+    --tasks ifeval \
+    --batch_size auto \
+    --gen_kwargs temperature=0.7,top_p=0.8,top_k=20,min_p=0,do_sample=True \
+    --apply_chat_template \
+    --fewshot_as_multiturn \
+    --write_out \
+    --show_config \
+    --seed 42 \
+    --output_path ${YOUR_SAVE_PATH}$ \
+    --device cuda:0 \
+    --confirm_run_unsafe_code
+```
+
 
 ## 📄 Citation
 
