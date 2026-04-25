@@ -286,15 +286,93 @@ class DataParallelPPOActor(BasePPOActor):
                         batch=batch_size,
                         seqlen=seqlen,
                     )
-                
+
+                topk_already_handled = False
                 with profile_cuda("pad_logprob", device=self.device_name, enabled=self.config.profile_kl):
-                    if return_all_logits:
+                    if return_all_logits and self.config.kl_topk > 0:
+                        # Optimization: handle topk BEFORE pad_input to avoid creating
+                        # the huge (bs, seqlen, vocab_size) padded tensor.
+                        # Instead we either pad only (N, K) or gather per-sample from rmpad.
+                        kl_topk = self.config.kl_topk
+                        topk_already_handled = True
+
+                        if "kl_topk_indices" in micro_batch:
+                            # Step 2: gather from rmpad log_probs per-sample using cu_seqlens
+                            kl_indices = micro_batch["kl_topk_indices"].to(log_probs.device)  # (bs, R, K)
+                            K = kl_indices.shape[-1]
+                            R = response_length
+                            gathered = torch.full((batch_size, R, K), -1e20, dtype=log_probs.dtype, device=log_probs.device)
+
+                            for si in range(batch_size):
+                                actual_len = (cu_seqlens[si + 1] - cu_seqlens[si]).item()
+                                n_valid = min(R, actual_len - 1)
+                                if n_valid <= 0:
+                                    continue
+                                rmpad_start = (cu_seqlens[si + 1]).item() - n_valid - 1
+                                rmpad_end = (cu_seqlens[si + 1]).item() - 1
+                                sample_log_probs = log_probs[rmpad_start:rmpad_end]  # (n_valid, V)
+
+                                resp_offset = R - n_valid
+                                sample_kl_indices = kl_indices[si, resp_offset:]  # (n_valid, K)
+                                valid_mask = sample_kl_indices != -1
+                                safe_idx = torch.where(valid_mask, sample_kl_indices, torch.zeros_like(sample_kl_indices))
+                                sample_gathered = torch.gather(sample_log_probs, -1, safe_idx.long())  # (n_valid, K)
+                                gathered[si, resp_offset:] = torch.where(valid_mask, sample_gathered,
+                                                                         torch.full_like(sample_gathered, -1e20))
+
+                            log_probs = gathered  # (bs, R, K)
+
+                        elif "first_kl_topk_indices" in micro_batch:
+                            # Merge branch: topk on rmpad, pad small, slice, merge
+                            first_indices = micro_batch["first_kl_topk_indices"].to(log_probs.device)
+                            target_k = 2 * kl_topk
+                            _, current_indices_rmpad = torch.topk(log_probs, k=kl_topk, dim=-1)  # (N, K)
+                            current_indices_padded = pad_input(
+                                hidden_states=current_indices_rmpad.float(),
+                                indices=indices,
+                                batch=batch_size,
+                                seqlen=seqlen,
+                            )  # (bs, S, K) — tiny
+                            current_indices = current_indices_padded[:, -response_length - 1 : -1].long()  # (bs, R, K)
+
+                            def merge_topk_indices_gpu(indices1, indices2, target_k, special_marker=-1):
+                                combined = torch.cat([indices1, indices2], dim=-1)
+                                combined_sorted, _ = combined.sort(dim=-1)
+                                shift = torch.full_like(combined_sorted[..., :1], -1)
+                                mask = torch.cat([torch.ones_like(shift, dtype=torch.bool),
+                                                  combined_sorted[..., 1:] != combined_sorted[..., :-1]], dim=-1)
+                                max_val = combined_sorted.max()
+                                filler = max_val + 1
+                                unique_candidates = torch.where(mask, combined_sorted, filler)
+                                final_sorted, _ = unique_candidates.sort(dim=-1)
+                                result = final_sorted[..., :target_k]
+                                final_mask = (result > max_val)
+                                result[final_mask] = special_marker
+                                return result
+
+                            merged_indices = merge_topk_indices_gpu(first_indices, current_indices, target_k, special_marker=-1)
+                            log_probs = merged_indices.float()  # (bs, R, 2K)
+
+                        else:
+                            # Step 1: topk on rmpad, pad small indices, slice response
+                            _, topk_indices_rmpad = torch.topk(log_probs, k=kl_topk, dim=-1)  # (N, K)
+                            topk_indices_padded = pad_input(
+                                hidden_states=topk_indices_rmpad.float(),
+                                indices=indices,
+                                batch=batch_size,
+                                seqlen=seqlen,
+                            )  # (bs, S, K) — tiny
+                            log_probs = topk_indices_padded[:, -response_length - 1 : -1]  # (bs, R, K)
+
+                    elif return_all_logits:
+                        # kl_topk == 0: must pad full vocab (rare case)
                         full_log_probs = pad_input(
                             hidden_states=log_probs,
                             indices=indices,
                             batch=batch_size,
                             seqlen=seqlen,
                         )
+                        log_probs = full_log_probs[:, -response_length - 1 : -1]
                     else:
                         full_log_probs = pad_input(
                             hidden_states=log_probs.unsqueeze(-1),
@@ -302,17 +380,14 @@ class DataParallelPPOActor(BasePPOActor):
                             batch=batch_size,
                             seqlen=seqlen,
                         )
+                        log_probs = full_log_probs.squeeze(-1)[:, -response_length - 1 : -1]  # (bsz, response_length)
 
                 # only return response part:
                 if calculate_entropy:
                     entropy = full_entropy.squeeze(-1)[:, -response_length - 1 : -1]  # (bsz, response_length)
-                
-                if return_all_logits:
-                    log_probs = full_log_probs[:, -response_length - 1 : -1]
-                else:
-                    log_probs = full_log_probs.squeeze(-1)[:, -response_length - 1 : -1]  # (bsz, response_length)
 
             else:  # not using rmpad and no ulysses sp
+                topk_already_handled = False
                 extra_args = {}
                 if self.use_fused_kernels:
                     extra_args["temperature"] = temperature
@@ -343,8 +418,8 @@ class DataParallelPPOActor(BasePPOActor):
                     if calculate_entropy:
                         entropy = verl_F.entropy_from_logits(logits)  # (bsz, response_length)
             
-            # handle topk if needed
-            if return_all_logits and self.config.kl_topk > 0:
+            # handle topk if needed (skip if already handled in rmpad optimization above)
+            if return_all_logits and self.config.kl_topk > 0 and not topk_already_handled:
                 if "kl_topk_indices" in micro_batch:
                     # Step 2: gather using provided indices
                     indices = micro_batch["kl_topk_indices"]
