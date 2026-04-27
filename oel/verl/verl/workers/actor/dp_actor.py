@@ -303,22 +303,31 @@ class DataParallelPPOActor(BasePPOActor):
                             R = response_length
                             gathered = torch.full((batch_size, R, K), -1e20, dtype=log_probs.dtype, device=log_probs.device)
 
+                            logit_slice_start = seqlen - R - 1
                             for si in range(batch_size):
                                 actual_len = (cu_seqlens[si + 1] - cu_seqlens[si]).item()
-                                n_valid = min(R, actual_len - 1)
-                                if n_valid <= 0:
+                                if actual_len <= 0:
                                     continue
-                                rmpad_start = (cu_seqlens[si + 1]).item() - n_valid - 1
-                                rmpad_end = (cu_seqlens[si + 1]).item() - 1
-                                sample_log_probs = log_probs[rmpad_start:rmpad_end]  # (n_valid, V)
+                                first_valid_col = indices[cu_seqlens[si]].item() - si * seqlen
+                                last_valid_col = first_valid_col + actual_len - 1
 
-                                resp_offset = R - n_valid
-                                sample_kl_indices = kl_indices[si, resp_offset:]  # (n_valid, K)
+                                r_start = max(0, first_valid_col - logit_slice_start)
+                                r_end = min(R - 1, last_valid_col - logit_slice_start)
+                                n_valid_logits = r_end - r_start + 1
+                                if n_valid_logits <= 0:
+                                    continue
+
+                                rmpad_offset = (logit_slice_start + r_start) - first_valid_col
+                                rmpad_start = cu_seqlens[si].item() + rmpad_offset
+                                rmpad_end = rmpad_start + n_valid_logits
+                                sample_log_probs = log_probs[rmpad_start:rmpad_end]  # (n_valid_logits, V)
+
+                                sample_kl_indices = kl_indices[si, r_start:r_end + 1]  # (n_valid_logits, K)
                                 valid_mask = sample_kl_indices != -1
                                 safe_idx = torch.where(valid_mask, sample_kl_indices, torch.zeros_like(sample_kl_indices))
-                                sample_gathered = torch.gather(sample_log_probs, -1, safe_idx.long())  # (n_valid, K)
-                                gathered[si, resp_offset:] = torch.where(valid_mask, sample_gathered,
-                                                                         torch.full_like(sample_gathered, -1e20))
+                                sample_gathered = torch.gather(sample_log_probs, -1, safe_idx.long())
+                                gathered[si, r_start:r_end + 1] = torch.where(valid_mask, sample_gathered,
+                                                                               torch.full_like(sample_gathered, -1e20))
 
                             log_probs = gathered  # (bs, R, K)
 
