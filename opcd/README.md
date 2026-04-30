@@ -195,7 +195,7 @@ cd /tmp ; git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harnes
 
 huggingface-cli login --token ${YOUR_HF_TOKEN}
 
-HF_ALLOW_CODE_EVAL=1 lm_eval --model hf \
+HF_ALLOW_CODE_EVAL=1 lm_eval --model vllm \
     --model_args pretrained=${YOUR_MODEL_PATH},enable_thinking=False \
     --tasks ifeval \
     --batch_size auto \
@@ -206,7 +206,6 @@ HF_ALLOW_CODE_EVAL=1 lm_eval --model hf \
     --show_config \
     --seed 42 \
     --output_path ${YOUR_SAVE_PATH}$ \
-    --device cuda:0 \
     --confirm_run_unsafe_code
 ```
 
