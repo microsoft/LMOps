@@ -1,5 +1,5 @@
 torch==2.4.0
-transformers==4.46.3
+transformers==5.0.0rc3
 datasets==2.20.0
 tqdm
 accelerate==1.0.0
