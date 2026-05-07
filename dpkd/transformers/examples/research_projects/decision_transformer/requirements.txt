@@ -165,7 +165,7 @@ pyparsing==3.0.7
 pyperclip==1.8.2
 pypng==0.0.21
 pyrsistent==0.18.1
-pytest==7.1.1
+pytest==9.0.3
 pytest-forked==1.4.0
 pytest-timeout==2.1.0
 pytest-xdist==2.5.0
