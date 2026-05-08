@@ -6,7 +6,7 @@ accelerate==1.0.0
 flash-attn==2.7.0.post2
 rouge
 nltk
-vllm==0.6.0
+vllm==0.20.0
 azure-identity==1.17.1
 openai==1.55.3
 starlette
