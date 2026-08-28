@@ -1,0 +1,12 @@
+data/
+checkpoints/
+results/
+outputs/
+wandb/
+.cache/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.DS_Store
