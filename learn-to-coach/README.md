@@ -75,10 +75,12 @@ is intentionally unsupported.
 
 For each source instance, training samples eight coach outputs. Same-instance
 training rewards each output on another actor attempt on the source. In
-cross-instance training, all outputs are evaluated on one shared, disjoint
-probe pool and receive their mean probe accuracy. Only the coach is updated.
-All cross-instance paper configurations use eight probes. Cross-instance
-evaluation is separate and uses 64 sources and 250 probes.
+cross-instance training, outputs receive their mean accuracy on disjoint
+probes. Math uses eight probes shared across the source batch. Text-game uses
+eight independent probe seeds per source group, shared by that group's eight
+outputs: 64 groups use 512 distinct probe seeds and 4096 probe rollouts per
+step. Only the coach is updated. Cross-instance evaluation is separate and
+uses 64 sources and one shared pool of 250 probes.
 
 See [`docs/algorithm.md`](docs/algorithm.md) for the dataflow and code map.
 

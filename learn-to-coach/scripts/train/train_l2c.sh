@@ -48,7 +48,7 @@ Core options:
   --prompt_version v4|v5     Defaults to v4 for cross-instance, v5 otherwise
   --coach_model MODEL         Defaults to the actor model
   --source_batch_size N       Number of source instances per optimizer step
-  --probe_size N              Shared probe pool (cross-instance only)
+  --probe_size N              Cross-instance probes: shared for math, per source group for textgame
   --rollout_n N               Coach candidates per source; must be >= 2
   --total_training_steps N
   --nnodes N --gpus_per_node N

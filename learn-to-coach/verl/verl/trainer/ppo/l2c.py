@@ -654,22 +654,33 @@ class L2CCrossInstanceMixin:
         metrics,
         timing_raw,
     ):
-        """Run one single-round textgame step with a shared probe pool."""
+        """Run one textgame step with a disjoint probe pool per source group.
+
+        All n candidates from one source share that group's probe_size seeds.
+        Different groups and training steps use different source/probe seeds.
+        """
 
         source_size = int(self.config.data.train_batch_size)
-        probe_size = int(self.config.trainer.get("probe_size", 7))
+        probe_size = int(self.config.trainer.get("probe_size", 8))
         if source_size < 1 or probe_size < 1:
             raise ValueError(f"cross-instance textgame training needs positive G/P, got {source_size}/{probe_size}")
         num_steps = int(self.config.trainer.textgame_max_steps)
         dump_enabled = bool(self.config.trainer.get("dump_dir", None))
 
         oel_round = int(self.config.trainer.get("oel_round", 0) or 0)
-        seeds_per_step = source_size + probe_size
+        group_size = 1 + probe_size
+        seeds_per_step = source_size * group_size
         seed_start = self.global_steps * seeds_per_step
         seed_base = 505019424 + 90039 + 100000 + oel_round * 10000000
         step_seeds = [seed_base + (seed_start + idx) * 1000 for idx in range(seeds_per_step)]
-        source_seeds = step_seeds[:source_size]
-        probe_seeds = step_seeds[source_size:]
+        # Each group owns one source followed by probe_size probes, matching
+        # guanheng/l2l-meta. Consecutive step blocks never reuse logical seeds.
+        source_seeds = step_seeds[::group_size]
+        probe_seeds = [
+            step_seeds[source_idx * group_size + 1 + probe_idx]
+            for source_idx in range(source_size)
+            for probe_idx in range(probe_size)
+        ]
 
         with marked_timer("step", timing_raw):
             with marked_timer("phase_a", timing_raw, color="blue"):
@@ -763,19 +774,28 @@ class L2CCrossInstanceMixin:
                     if dump_enabled
                     else None
                 )
-                for probe_idx, probe_seed in enumerate(probe_seeds):
+                # One round per candidate slot, with (source, probe) ordering.
+                # Each source's probes receive only that source's candidate.
+                for rollout_idx in range(n):
+                    round_experiences = [
+                        experiences[source_idx * n + rollout_idx]
+                        for source_idx in range(source_size)
+                        for _ in range(probe_size)
+                    ]
                     trajectories, rewards = self._l2c_generate_textgame_batch(
-                        experiences,
-                        [probe_seed] * num_candidates,
+                        round_experiences,
+                        probe_seeds,
                         num_steps,
                         validate=False,
                     )
-                    for candidate_idx, reward in enumerate(rewards):
+                    for env_idx, reward in enumerate(rewards):
+                        source_idx, probe_idx = divmod(env_idx, probe_size)
+                        candidate_idx = source_idx * n + rollout_idx
                         pair_rewards[candidate_idx, probe_idx] = float(reward == 1.0)
                         if phase_c_trajectories is not None:
                             phase_c_trajectories[
                                 candidate_idx * probe_size + probe_idx
-                            ] = trajectories[candidate_idx]
+                            ] = trajectories[env_idx]
                 candidate_rewards = pair_rewards.mean(dim=-1)
                 reward_matrix = candidate_rewards.view(source_size, n)
 
@@ -861,7 +881,9 @@ class L2CCrossInstanceMixin:
                             "env_idx": source_idx,
                             "rollout_idx": rollout_idx,
                             "source_seed": source_seeds[source_idx],
-                            "probe_seeds": probe_seeds,
+                            "probe_seeds": probe_seeds[
+                                source_idx * probe_size:(source_idx + 1) * probe_size
+                            ],
                             "exp_learner_input": exp_prompts[source_idx],
                             "raw_output": raw_outputs[candidate_idx],
                             "parsed_exp": parsed_outputs[candidate_idx],
@@ -876,7 +898,11 @@ class L2CCrossInstanceMixin:
 
                 phase_c_records = []
                 for candidate_idx in range(num_candidates):
-                    for probe_idx, probe_seed in enumerate(probe_seeds):
+                    source_idx = candidate_idx // n
+                    group_probe_seeds = probe_seeds[
+                        source_idx * probe_size:(source_idx + 1) * probe_size
+                    ]
+                    for probe_idx, probe_seed in enumerate(group_probe_seeds):
                         trajectory = phase_c_trajectories[
                             candidate_idx * probe_size + probe_idx
                         ] or {}

@@ -1149,7 +1149,8 @@ trainer:
   iter_compact_carry_prev: true
 
   # Cross-instance reward/eval pools. Math training uses a shared probe batch;
-  # textgame training uses a shared, disjoint seed pool.
+  # textgame training allocates this many disjoint probe seeds per source group,
+  # shared only by that group's candidates (64 groups * 8 = 512 probe seeds).
   probe_size: 8
   cross_eval_source_size: null
   cross_eval_probe_size: null

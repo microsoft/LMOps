@@ -7,7 +7,7 @@ source problem or environment seed
   -> frozen actor: initial solve trajectory
   -> LLM-as-a-Coach: n candidate knowledge snippets
        -> same-instance: each candidate guides a new solve on the source
-       -> cross-instance: each candidate guides solves on a shared probe pool
+       -> cross-instance: each candidate guides solves on disjoint probes
   -> verifier or environment reward
   -> normalize rewards across the n candidates from the same source
   -> GRPO update of the coach only
@@ -50,18 +50,24 @@ uniform choice because samples from one prompt are exchangeable.
 
 ## Cross-instance training
 
-The source and probe sets are disjoint. Every candidate is evaluated on the
-same probe pool:
+The source and probe sets are disjoint. Math candidates share one probe pool
+across the source batch. Text-game allocates an independent pool of
+`trainer.probe_size` seeds per source group; only the `n` candidates from that
+source share its probes. Each candidate receives its mean probe accuracy:
 
 ```text
 pair_reward[candidate, probe] in {0, 1}
 candidate_reward = mean(pair_reward[candidate, :])
 ```
 
-Math flattens this grid in candidate-major, probe-minor order. Text-game runs
-use deterministic, shared probe seeds and transport-only padding when a pool
-size is not divisible by the actor world size. Padding never changes the
-logical source or probe count.
+Math flattens this grid in candidate-major, probe-minor order. Text-game
+allocates `B * (1 + probe_size)` deterministic seeds per step, laid out as one
+source followed by its probes for each group. Groups and steps have disjoint
+seeds. Phase C runs `n` rounds of `B * probe_size` environments, using candidate
+`source_idx * n + rollout_idx` on that source's probes. With `B=64`, `n=8`, and
+`probe_size=8`, a step uses 64 source seeds, 512 distinct probe seeds, and 4096
+probe rollouts. Transport-only padding handles batches not divisible by the
+actor world size without changing logical source or probe counts.
 
 ## Evaluation
 
