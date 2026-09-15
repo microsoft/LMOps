@@ -1,7 +1,8 @@
 # Learning to Coach for Experiential Learning
 
-This directory contains the implementation of **Learning to Coach (L2C)**.
-L2C trains a dedicated LLM-as-a-Coach to turn a frozen actor model's previous
+This directory contains the implementation for 📄 **[Learning to Coach for Experiential Learning](https://arxiv.org/abs/2609.15851)**.
+
+Learning to Coach (L2C) trains a dedicated LLM-as-a-Coach to turn a frozen actor model's previous
 trajectory into concise, actionable experiential knowledge. The coach is
 optimized with GRPO using the correctness of the actor's guided solve, while
 the actor's parameters remain unchanged.
@@ -204,7 +205,10 @@ The central implementation files are:
 @article{chen2026learningtocoach,
   title={Learning to Coach for Experiential Learning},
   author={Guanheng Chen and Tianzhu Ye and Li Dong and Xun Wu and Shaohan Huang and Furu Wei},
-  year={2026}
+  year={2026},
+  eprint={2609.15851},
+  archivePrefix={arXiv},
+  url={https://arxiv.org/abs/2609.15851}
 }
 ```
 
