@@ -3,6 +3,7 @@
 This module contains various utility functions for making API calls to LLMs,
 implementing RAG functionality, and managing network ports.
 """
+import os
 import time
 from typing import List, Union
 
@@ -18,7 +19,10 @@ from vertexai.generative_models import (
 )
 from sentence_transformers import SentenceTransformer, util
 
-from deepscaler.globals import GCP_PROJECT_ID, GCP_LOCATION, GEMINI_MODEL, OAI_RM_MODEL
+from deepscaler.globals import (
+    GCP_PROJECT_ID, GCP_LOCATION, GEMINI_MODEL, OAI_RM_MODEL,
+    ORCAROUTER_API_BASE, ORCAROUTER_RM_MODEL,
+)
 
 
 def call_oai_rm_llm(
@@ -43,6 +47,66 @@ def call_oai_rm_llm(
         Generated text(s) from the model
     """
     client = openai.OpenAI()
+    backoff = 1
+    retry_count = int(retry_count)
+
+    for _ in range(retry_count):
+        try:
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=temperature,
+                n=n,
+            )
+            break
+        except Exception as exc:
+            if "429" in str(exc):
+                print("Retry due to rate limit: ", exc)
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 64)  # Exponential backoff up to 64s
+                continue
+            print("Exception: ", exc)
+            return []
+
+    if n == 1:
+        return response.choices[0].message.content
+    return [choice.message.content for choice in response.choices]
+
+
+def call_orcarouter_rm_llm(
+    prompt: str,
+    system_prompt: str,
+    n: int = 1,
+    temperature: float = 1.0,
+    model_id: str = ORCAROUTER_RM_MODEL,
+    retry_count: int = 1000000000
+) -> Union[str, List[str]]:
+    """Call the OrcaRouter API as the RM (outcome reward model) with retry logic.
+
+    OrcaRouter is an OpenAI-compatible AI gateway built for both models and
+    agents (https://www.orcarouter.ai). It exposes a provider/model namespace
+    across many models through the same endpoint, so this client mirrors
+    call_oai_rm_llm but points at https://api.orcarouter.ai/v1 with the
+    ORCAROUTER_API_KEY environment variable.
+
+    Args:
+        prompt: The text prompt to send to the model
+        system_prompt: System instruction for the model
+        n: Number of completions to generate
+        temperature: Sampling temperature
+        model_id: OrcaRouter model ID to use
+        retry_count: Number of retries on rate limit errors
+
+    Returns:
+        Generated text(s) from the model
+    """
+    client = openai.OpenAI(
+        api_key=os.environ.get("ORCAROUTER_API_KEY"),
+        base_url=ORCAROUTER_API_BASE,
+    )
     backoff = 1
     retry_count = int(retry_count)
 

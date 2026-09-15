@@ -5,11 +5,11 @@ validate answers when necessary.
 """
 from typing import List, Union
 
-from deepscaler.globals import THOUGHT_DELIMITER_START, THOUGHT_DELIMITER_END, OAI_RM_MODEL
+from deepscaler.globals import THOUGHT_DELIMITER_START, THOUGHT_DELIMITER_END, OAI_RM_MODEL, ORCAROUTER_RM_MODEL
 from deepscaler.rewards import RewardConfig, RewardFn, RewardInput, RewardOutput, RewardType
 from deepscaler.rewards.math_utils.utils import extract_answer, grade_answer_sympy, grade_answer_mathd
 from deepscaler.system_prompts import ORM_PROMPT
-from deepscaler.utils import call_gemini_llm, call_oai_rm_llm
+from deepscaler.utils import call_gemini_llm, call_oai_rm_llm, call_orcarouter_rm_llm
 
 import re
 
@@ -99,8 +99,18 @@ class RewardMathFn(RewardFn):
                         temperature=0.0,
                         model_id=OAI_RM_MODEL,
                     )
-                    
-                    if "[[YES]]" in orm_response:
+                    if isinstance(orm_response, str) and "[[YES]]" in orm_response:
+                        return RewardOutput(reward=self.config.correct_reward, is_correct=True)
+
+                    print ("OAI RM unavailable, trying OrcaRouter")
+                    orm_response = call_orcarouter_rm_llm(
+                        system_prompt=ORM_PROMPT,
+                        prompt=ORM_USER_TEMPLATE.format(problem=problem, answer_1=model_answer, answer_2=ground_truth),
+                        temperature=0.0,
+                        model_id=ORCAROUTER_RM_MODEL,
+                    )
+
+                    if isinstance(orm_response, str) and "[[YES]]" in orm_response:
                         return RewardOutput(reward=self.config.correct_reward, is_correct=True)
                     continue
                 
