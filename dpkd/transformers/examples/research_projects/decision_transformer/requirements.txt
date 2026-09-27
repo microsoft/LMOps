@@ -174,7 +174,7 @@ python-slugify==6.1.1
 pytz==2022.1
 pytz-deprecation-shim==0.1.0.post0
 PyYAML==6.0
-ray==1.11.0
+ray==2.55.0
 redis==4.5.4
 regex==2022.3.15
 requests==2.31.0
